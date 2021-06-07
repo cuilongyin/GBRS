@@ -567,10 +567,20 @@ num_of_centroids = 9
         #num_of_centroids = j
 totalRun(fileName,startYear, min_NO_rating, totalNOB, cluster_size, num_of_centroids )
 
-#最后simDic只需要做testSet里面的user就行了
-#里面符合要求的user才需要算，这里指的是filter过的。
-# In[ ]:
-
+# The weighted sum from the centroids do not show a better result
+# this was added at GBRS class, estimate function
+        #=======================part 1============================= 
+            #self.simDic[originalUser] = (centroidsVec,simVec)
+        #=======================part 2=================================    
+        #for eachSim in rankedCtdnSims[1]:
+            #simList.append(eachSim)
+        #=======================part 3================================== 
+        #combinedVec = np.zeros(len(vecList[0]))
+        #for i in range(len(simList)):
+            #combinedVec += simList[i]*vecList[i]
+        #rating_vec = combinedVec/sum(simList)
+        #===============================================================
+        #change to weighted average is worse, the reason is unclear.
 
 
 
