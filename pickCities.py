@@ -3,8 +3,8 @@ import sys
 import os 
 
 dir_read    = os.path.dirname(os.path.realpath(__file__)) + "\\processedFile.csv"
-dir_write   = os.path.dirname(os.path.realpath(__file__)) + "\\UC.csv"
-open(dir_write, 'a').close()
+dir_write   = os.path.dirname(os.path.realpath(__file__)) + "\\"
+#open(dir_write, 'a').close()
 #user_id	bus_id	rating	date	city	state	lat	lon	text
 
 def extractCity(dir_read, dir_write, city, tittle, append):
@@ -37,7 +37,7 @@ def extractCity(dir_read, dir_write, city, tittle, append):
                     print("There is an anomaly")
                     print(row)
         
-def extractCities(dir_read, dir_write, citiList):
+def extractCities(dir_read, dir_write_base,fileName, citiList):
      
     extractCity(dir_read, dir_write, citiList[0], 1, 0 )
     for i in range(1,len(citiList)):
@@ -46,7 +46,10 @@ def extractCities(dir_read, dir_write, citiList):
 def main():
     
     citiList=['Urbana','Champaign']
-    extractCities(dir_read, dir_write, citiList)
+    fileName = ''
+    for eachName in citiList:
+        fileName = fileName + eachName + ".csv"
+    extractCities(dir_read, dir_write_base, fileName, citiList)
 
 if __name__=="__main__":
     main()
