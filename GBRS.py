@@ -64,7 +64,7 @@ class myModel(AlgoBase):
         return self
 
     def sgd(self, trainset):
-
+        print("Strat sgd ...")
         rng = get_rng(self.random_state)
 
         bu = np.zeros(trainset.n_users, np.double)
@@ -102,13 +102,12 @@ class myModel(AlgoBase):
                     qi[i, f] += self.lr_qi * (err * puf - self.reg_qi * qif)
                     #qi[i,f] += self.lr_qi * (err * puf - (self.reg_qi + self.reg_qi2 (sum (s[i]))\
                                                           #+self.reg_qi2 (sum(s[i][j]*qj)) )
-                                                          
                                                           # s dic of dic
-
         self.bu = bu
         self.bi = bi
         self.pu = pu
         self.qi = qi
+        print("Done ...")
 
     def impute_train(self, u, i):
 
@@ -416,8 +415,10 @@ def readDataFrame(df_train, df_test, df_trainOrignal): # to generate train/test 
 
 
 def train(model, trainSet, factors, epochs, random , originalDic, num_of_centroids):
+    print("Start training ...")
     Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, originalDic = originalDic, numCtds = num_of_centroids)
     Algorithm.fit(trainSet)
+    print("Done ...")
     return Algorithm
 
 
@@ -425,7 +426,7 @@ def train(model, trainSet, factors, epochs, random , originalDic, num_of_centroi
 
 
 def test(trainedModel, testSet,log, mae = 1, rmse = 1):
-    
+    print("Start testing ...")
     predictions = trainedModel.test(testSet)
     if rmse == 1:
         acc_rmse = accuracy.rmse(predictions, verbose=True)
@@ -433,10 +434,9 @@ def test(trainedModel, testSet,log, mae = 1, rmse = 1):
     if mae == 1:
         acc_mae = accuracy.mae(predictions, verbose=True)
         log.write(str(acc_mae) + '\n')
-
+    print("Done ...")
 
 # In[613]:
-
 
 def prepareDf(fileName, startYear, min_NO_rating):
     df = createPandasDataFrame(fileName)
@@ -493,6 +493,7 @@ def furtherFilter(num_rating,df_train, df_trainOrignal, df_test):
 # In[614]:
 
 def prpareTrainTestObj(df, batch_size, NOofBatches, cluster_size):
+    print("Preparing training and testing datasets and objects ...")
     df_train = createTrainDf_clustered(df, batch_size, NOofBatches, cluster_size)
     df_test  = createTestDf(df, batch_size, NOofBatches+1)
     df_trainOrignal = createTrainDf_unClustered(df, batch_size, NOofBatches) # the original rating matrix is not imputed at this point
@@ -510,6 +511,7 @@ def prpareTrainTestObj(df, batch_size, NOofBatches, cluster_size):
  
     trainSet, testSet, originalTrainSet = readDataFrame(df_train,df_test,df_trainOrignal)
     OriginalDic = originalTrainListToDic(originalTrainSet)
+    print("Done ...")
     return trainSet, testSet, OriginalDic 
     
     
@@ -539,9 +541,7 @@ def totalRun(fileName, startYear, min_NO_rating, totalNOB, cluster_size, num_of_
                                  + '.txt'
     log = open(output, 'w')
     log.write('RMSE, MAE\n')
-    
     df = prepareDf(fileName, startYear, min_NO_rating)
-    
     for XthBatch in range(1,totalNOB+1):
         print(f"=================Starting the {XthBatch}th batch=================")
         trainSet, testSet, originalDic = prpareTrainTestObj(df, batch_size, XthBatch, cluster_size)
