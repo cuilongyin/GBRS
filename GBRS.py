@@ -549,8 +549,7 @@ def totalRun(fileName, startYear, min_NO_rating, totalNOB, cluster_size, num_of_
 
 # In[ ]:
 
-# get rid of the obsolete groups and check the results.
-#fileName = "Urbana_Champaign_Comments.csv"
+'''
 fileName = "UC.csv"
 startYear = 2007
 min_NO_rating = 4      # 3: 22785 lines
@@ -581,6 +580,19 @@ totalRun(fileName,startYear, min_NO_rating, totalNOB, cluster_size, num_of_centr
         #rating_vec = combinedVec/sum(simList)
         #===============================================================
         #change to weighted average is worse, the reason is unclear.
+'''
 
+fileName = "Phoenix.csv"
+startYear = 2007
+min_NO_rating = 9999999999   # total is 576065, filtering is too slow because of the matrix being too large.
+batch_size = 16943     
+cluster_size = 1      #clusters per batch
+totalNOB = 33           #number of Batch, not including the test batch
+factors = 3
+num_of_centroids = 9
 
-
+#for i in range(1,15):  
+    #cluster_size = i
+    #for j in range(1,15):
+        #num_of_centroids = j
+totalRun(fileName,startYear, min_NO_rating, totalNOB, cluster_size, num_of_centroids,batch_size )
