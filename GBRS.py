@@ -79,6 +79,7 @@ class myModel(AlgoBase):
             global_mean = 0
 
         for current_epoch in range(self.n_epochs):
+            n = 0
             if self.verbose:
                 print("Processing epoch {}".format(current_epoch))
             for u, i, r in trainset.all_ratings():
@@ -103,6 +104,7 @@ class myModel(AlgoBase):
                     #qi[i,f] += self.lr_qi * (err * puf - (self.reg_qi + self.reg_qi2 (sum (s[i]))\
                                                           #+self.reg_qi2 (sum(s[i][j]*qj)) )
                                                           # s dic of dic
+                n += 1
         self.bu = bu
         self.bi = bi
         self.pu = pu
@@ -416,7 +418,7 @@ def readDataFrame(df_train, df_test, df_trainOrignal): # to generate train/test 
 
 def train(model, trainSet, factors, epochs, random , originalDic, num_of_centroids):
     print("Start training ...")
-    Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, originalDic = originalDic, numCtds = num_of_centroids)
+    Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, originalDic = originalDic, numCtds = num_of_centroids, verbose = False)
     Algorithm.fit(trainSet)
     print("Done ...")
     return Algorithm
