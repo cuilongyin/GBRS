@@ -4,6 +4,7 @@
 # In[594]:
 import math
 import os
+import numpy as np
 from sklearn.cluster import KMeans
 from surprise import Dataset
 from surprise import Reader
@@ -17,7 +18,7 @@ from surprise import PredictionImpossible
 from collections import defaultdict
 from numpy import dot
 from numpy.linalg import norm
-import numpy as np
+
 
 
 # In[595]:
