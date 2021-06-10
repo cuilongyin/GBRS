@@ -441,7 +441,7 @@ def test(trainedModel, testSet,log, mae = 1, rmse = 1):
 def prepareDf(fileName, startYear, min_NO_rating):
     df = createPandasDataFrame(fileName)
     df = filiterYear(df, startYear)
-    df = removeUsers(df, min_NO_rating)
+    #df = removeUsers(df, min_NO_rating)
     print(f" There are {len(df.index)} lines of records in this df after processing ..." )
     return df
 
