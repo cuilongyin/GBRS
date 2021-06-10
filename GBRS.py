@@ -499,9 +499,9 @@ def prpareTrainTestObj(df, batch_size, NOofBatches, cluster_size):
     df_train = df_train[['user_id', 'bus_id', 'rating']]
     df_test  = df_test[['user_id', 'bus_id', 'rating']]
     df_trainOrignal = df_trainOrignal[['user_id', 'bus_id', 'rating']]
-    print(f"there are {len(df_train['bus_id'].drop_duplicates())} items in train" )
-    print(f"there are {len(df_test['bus_id'].drop_duplicates())} items in test" )
-    print(f"there are {len(df_trainOrignal['bus_id'].drop_duplicates())} items in original" )      
+    #print(f"there are {len(df_train['bus_id'].drop_duplicates())} items in train" )
+    #print(f"there are {len(df_test['bus_id'].drop_duplicates())} items in test" )
+    #print(f"there are {len(df_trainOrignal['bus_id'].drop_duplicates())} items in original" )      
     if len(df_train.index) <=1 or len(df_test.index) <=1 or len(df_trainOrignal) <=1:
         raise Exception("One of the dataframe is too small, check the test df first.")
     
@@ -545,7 +545,7 @@ def totalRun(fileName, startYear, min_NO_rating, totalNOB, cluster_size, num_of_
     for XthBatch in range(1,totalNOB+1):
         print(f"=================Starting the {XthBatch}th batch=================")
         trainSet, testSet, originalDic = prpareTrainTestObj(df, batch_size, XthBatch, cluster_size)
-        batchRun(model, trainSet, originalDic, testSet, num_of_centroids, log, epochs = maxEpochs, random = Random, MAE = mae, RMSE = rmse )
+        batchRun(myModel, trainSet, originalDic, testSet, num_of_centroids, log, epochs = maxEpochs, random = Random, MAE = mae, RMSE = rmse )
     log.close
 
 # In[ ]:
