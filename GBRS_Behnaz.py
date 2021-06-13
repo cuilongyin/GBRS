@@ -4,23 +4,25 @@
 #test by behnaz
 # In[594]:
 import math
+import re
 import os
+import platform
+import pandas as pd
+import numpy as np
+from statistics import mean
 from sklearn.cluster import KMeans
+from sklearn.cluster import SpectralClustering
 from surprise import Dataset
 from surprise import Reader
 from surprise import accuracy
 from surprise.model_selection import train_test_split
-import platform
-import pandas as pd
 from surprise import AlgoBase
 from surprise.utils import get_rng
 from surprise import PredictionImpossible
 from collections import defaultdict
 from numpy import dot
 from numpy.linalg import norm
-import numpy as np
 import csv
-
 
 # In[595]:
 
@@ -350,22 +352,323 @@ def createTrainDf_unClustered(df, batch_size, NOofBatches):
 # In[606]:
 
 
-def cluster_KMean_userRating(df, Xth_batch, clusters_per_batch):
-    df = columnImpute(df)
-    pdf = df.pivot(index='user_id', columns = 'bus_id', values = 'rating') 
-    columnNames = pdf.columns
-    model = KMeans(n_clusters = clusters_per_batch)
-    model.fit_predict(pdf)
-    clusters = pd.DataFrame(model.cluster_centers_)
-    clusters.columns= columnNames
-    df = clusters.T.unstack().reset_index(name='rating')
-    df.rename(columns={'level_0': 'user_id'}, inplace=True)
-    df['user_id'] = df['user_id'] + 100000*Xth_batch # this is to make each centroids' ID special
-                                                    # So this batch's IDs to mess with the next one's'
-    # Do for Behnaz, 1: convert the bus_id back
-    # 2, increament the user_id or "group id"
-    print(df)
-    return df
+def cluster_KMean_userRating(curr_df, Xth_batch, clusters_per_batch):
+    # df = columnImpute(df)
+    # pdf = df.pivot(index='user_id', columns = 'bus_id', values = 'rating') 
+    # columnNames = pdf.columns
+    # model = KMeans(n_clusters = clusters_per_batch)
+    # model.fit_predict(pdf)
+    # clusters = pd.DataFrame(model.cluster_centers_)
+    # clusters.columns= columnNames
+    # df = clusters.T.unstack().reset_index(name='rating')
+    # df.rename(columns={'level_0': 'user_id'}, inplace=True)
+    # df['user_id'] = df['user_id'] + 100000*Xth_batch # this is to make each centroids' ID special
+    #                                                 # So this batch's IDs to mess with the next one's'
+    # # Do for Behnaz, 1: convert the bus_id back
+    # # 2, increament the user_id or "group id"
+    # print(df)
+    # return df df1 = curr_df
+    # df = columnImpute(df)
+    
+    #df1 = df
+    # pdf = df.pivot(index='user_id', columns = 'bus_id', values = 'rating') 
+    # columnNames = pdf.columns
+    # model = KMeans(n_clusters = clusters_per_batch)
+    # model.fit_predict(pdf)
+    # clusters = pd.DataFrame(model.cluster_centers_)
+    # clusters.columns= columnNames
+    # df = clusters.T.unstack().reset_index(name='rating')
+    # df.rename(columns={'level_0': 'user_id'}, inplace=True)
+    # df['user_id'] = df['user_id'] + 100000*Xth_batch # this is to make each centroids' ID special
+    #                                                 # So this batch's IDs to mess with the next one's'
+    # # Do for Behnaz, 1: convert the bus_id back
+    # # 2, increament the user_id or "group id"
+    df1 = curr_df
+    print("-----------------", len(df1))
+    print(df1)
+    df1.sort_values(by=['user_id'], inplace=True)
+    print(df1)
+    print("Start Behnaz code")
+    dict1 = df1.to_dict() 
+    #val_list is data  in list
+    val_list = list(dict1.values())
+    #%%%%%%%%%%% unique users ID and business ID %%%%%%%%%%%
+    #ui is unique userid list
+    list_set1 = set(list(val_list[0].values()))
+    ui = (list(list_set1)) 
+    #bi is unique userid list
+    list_set2= set(list(val_list[1].values()))
+    bi= (list(list_set2))
+    #%%%%%%%%%%%% 
+    #%%%%%%%%%%%% create Nan Matrix%%%%%%%%%
+    arr = [[None]*len(bi)]*len(ui)
+    df3 = pd.DataFrame(arr, 
+                    columns=(bi),
+                    index = [ui])
+    #df3 is dataframe matrix
+    df3 = df3.fillna(value=np.nan)
+    #df3 = df3.sort_values(by= ["user_id"], ascending=True)
+    
+    print("Created rating nan matrix")
+    print("-------",len(df3))
+    #print(df3)
+    # # #%%%%%%%%%%%% Insert Rating To Place %%%%%%%%%  
+    k = 0
+    i = 0
+    uf1=  dict1.get('user_id')
+    #print("uf1")
+    #print(uf1)
+    #print("ppppp",uf1.get(11))
+    bf1 = dict1.get('bus_id')
+    #print(uf1.values())
+    for i in enumerate (uf1.values()):
+
+          k=df1.index[i[0]]
+          uf2 = uf1.get(k)
+          a = df1[df1['user_id']== uf2]['bus_id']
+          #print(a)
+          uiindex = ui.index(uf2)
+          for j in range(a.size):
+              a1 = a.iloc[j:j+1]
+              t = a.index[j]
+              a2 = a1.iloc[0]
+              biindex = bi.index(a2)
+              df3.iloc[uiindex, biindex] = (df1.rating[t])
+              
+    print("Inserted rating to the correct place")
+    print("-------")
+    dfMatrix = df3
+    #dfMatrix is dataframe matrix with real rate
+    #print(dfMatrix)    
+    
+    # #%%%%%%%%%%%% 
+    # #%%%%%%%%%%%%delete users who just gave one rating %%%%%%%%%%%%%%%   
+    # #print("started to delet user who have one rate")
+    # # deletindex =[]
+    # # count =0
+    # # for i in range(len(dfMatrix)):
+    # #     if dfMatrix.iloc[i].count() < 2 :
+    # #             count +=1
+    # #             deletindex.append(i)
+    # # dfMatrix.drop(dfMatrix.index[deletindex],inplace =True)
+
+    # # empty_cols = [col for col in dfMatrix.columns if dfMatrix[col].isnull().all()]
+    # # # Drop these columns from the dataframe
+    # # dfMatrix.drop(empty_cols,
+    # #     axis=1,
+    # #     inplace=True)
+    # # print(dfMatrix)
+    # #%%%%%%%%%%%%%%%% similar user location centroid%%%%%%%%%%%%%
+    df2 = df1.copy()
+    uniquedataframe = df2.drop_duplicates(subset=['user_id'],keep="first" , inplace=False)
+    #print(uniquedataframe)
+    uniquedataframe.sort_values(by=['user_id'], inplace=True)
+    print(uniquedataframe)
+    uniquelist = uniquedataframe.values.tolist()
+    a_list= df1.values.tolist()
+    m2 = df1.to_dict()
+    val_list = list(m2.values())
+    bs = val_list[0]
+    val_l = list(bs.values())
+    locdataframe = pd.DataFrame( columns = ['user_id','lat','lon'])
+    
+    for j in uniquelist:
+        indices = []
+        l1= []
+        l2= []
+        for i in range(len(a_list)):
+              if val_l[i] == j[0]:
+                  indices.append(i)
+                  l1.append(a_list[i][4])
+                  l2.append(a_list[i][5])
+
+        l1avg = mean(l1)
+        l2avg = mean(l2)
+        temp = {'user_id': j[0],'lat':l1avg, 'lon':l2avg}
+        locdataframe = locdataframe.append(temp, ignore_index = True)
+      
+           
+    locdataframe = locdataframe.astype({"user_id": int, "lat": float, "lon" :float})
+    locdataframe.sort_values(by=['user_id'], inplace=True) 
+    locdataframe.reset_index(drop=True, inplace=True)
+    #locdataframe is dataframe of location
+    print("Prepared location file")
+    print("-------")
+    print(locdataframe)
+    # # #%%%%%%%%%%%%%%find correct user for the GPS%%%%%%%%%%%%
+    # s=[]
+    # for row in dfMatrix.index:
+    #     res = re.sub("\D", "", str(row))
+    #     s.append(int(res))
+    # #dfloc = df1.copy()
+    # a =[]
+    # a = locdataframe["user_id"].tolist()
+    # set_difference = set(a) - set(s)
+    # locdataframe.reset_index(drop=True, inplace=True)
+    # for i in set_difference: 
+    #     locdataframe.drop(locdataframe[locdataframe['user_id'] == (i)].index,inplace=True)
+    # print("hhhhhhhhhhhhh")
+    # print(locdataframe)    
+    # #%%%%%%%%%%%%%%%%%%%%%%%%%
+    #%%%%%%%%%%%%%%%%%%%%%Create nan matrix for RATING and GPS and GPS & RATING %%%%%%%%%%%%%
+    usersgps = locdataframe.iloc[:,0]
+    usersgps_list = set(usersgps)
+    unique_usersgps = list(usersgps_list)
+    coordinate =(len(unique_usersgps))
+    #print(coordinate)
+    arr = [[None]*coordinate]*coordinate
+    gpsMatrix = pd.DataFrame(arr, 
+                    columns=(unique_usersgps ),
+                    index = [unique_usersgps ])
+    gpsMatrix = gpsMatrix.fillna(value=np.nan)
+    print("Created NAN matrix for GPS similarity") 
+    print("-------")
+    #print(gpsMatrix)
+    rateMatrix= gpsMatrix.copy()
+    print("Created NAN matrix for RATING similarity") 
+    print("-------")
+    rateAndgpsMatrix= gpsMatrix.copy()
+    print("Created NAN matrix for RATING & GPS similarity") 
+    print("-------")
+    # # # # #%%%%%%%%%%%%%%%%%%%Create similarity GPS matrix %%%%%%%%%%%%%%%
+    print("Start to make GPS Smilarity matrix")
+    dictloc =locdataframe.to_dict()
+    dictgpsMatrix = gpsMatrix.to_dict()
+    df_dictgpsMatrix = pd.DataFrame(dictgpsMatrix)
+    for i in range (coordinate):
+            ii = df_dictgpsMatrix.columns[i]
+            for j in range (coordinate):
+                jj = df_dictgpsMatrix.columns[j]
+                A = [dictloc["lat"][i],dictloc["lon"][i]]
+                B = [dictloc["lat"][j],dictloc["lon"][j]]
+                similarity = np.dot(A,B)/(np.linalg.norm(A)*np.linalg.norm(B))
+                #print (f"Cosine Similarity :{similarity }")
+                dictgpsMatrix[ii][jj,] =  similarity
+              
+    print("Created cosine similarity(GPS) ")
+    print("--------")
+    #print(dictgpsMatrix)
+    dfGPSMatrix= pd.DataFrame(dictgpsMatrix)
+    #print(dfGPSMatrix)
+    #dfGPSMatrix.to_csv("p.csv")
+       
+    # # #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # # #%%%%%%%%%%%%%%%%%%%%insert value into empty space by using baseline model%%%%%%%%%%%%
+    # # # #-------
+    def baselinemodel(mu,userid,itemid):
+    
+        itemAvg = dfMatrix.iloc[:,itemid].mean()
+        itemDif = itemAvg - mu
+        userAvg = dfMatrix.iloc[userid].mean()
+        userDif = userAvg - mu
+        #mu + userDif + itemDif 
+        return mu + userDif + itemDif 
+    # # #------- 
+    print("Start to insert  value in  the empty space by using baseline model")
+    mu =  dfMatrix.mean(axis=0).mean()
+    #mu1 = dfMatrix.mean(axis=1).mean()
+    #print(mu , mu1)
+    arr = dfMatrix.to_numpy()
+    rowlength = len(dfMatrix)
+    columnlength = len(dfMatrix.columns)
+    for i in range (rowlength):
+        #print("i",i)
+        for j in range (columnlength):
+            rate = baselinemodel(mu,i,j)
+            if rate > 5:
+                  rate=5
+            elif rate  < 1:
+                  rate =1
+            if(np.isnan(arr[i][j]).any()):
+                          arr[i][j] = rate
+
+    completedf = pd.DataFrame(arr, columns = dfMatrix.columns, index = dfMatrix.index) 
+    completedf.to_csv("CompleteRatingMatrix.csv")
+    print("Inserted value into empty space in rating matrix by using baseline model")
+    # # #%%%%%%%%%%%%%%%%Create similarity rating matrix %%%%%%%%%%%%%
+    completedf['mean'] = completedf.mean(axis=1)
+    users_rate_avg = completedf.to_dict()
+    #print(completedf)
+    dictratingMatrix = rateMatrix.to_dict()
+    print("=============")
+    # # # #%%%%%%%%%%%%  Insert Cosin similarity%%%%%%%%%%%%%%%%%
+    print("Start to make RATING Smilarity matrix")
+    for row in rateMatrix.index:
+          i = int(re.sub("\D", "", str(row)))
+          #print("... ",i)
+          for column in range (len(rateMatrix.columns)):
+              j= int(rateMatrix.columns[column])
+              A = [users_rate_avg['mean'][i,],users_rate_avg['mean'][j,]]
+              B = [users_rate_avg['mean'][j,],users_rate_avg['mean'][i,]]
+              similarity = np.dot(A,B)/(np.linalg.norm(A)*np.linalg.norm(B))
+              dictratingMatrix[i][j,] = similarity
+    print("Created Matrix with rating cosine similarity(Rating) ") 
+    dfRATINGMatrix= pd.DataFrame(dictratingMatrix)
+    #print(dfRATINGMatrix)
+    # # # #%%%%%%%%%%%%%%%%%%%
+    # # # #%%%%%%%%%%%%%%%%Add two Similarity %%%%%%%%%%%%%%%%%
+    print("Started to Add two Similarity")
+    #ratel=dfGPSMatrix.values.tolist()
+    #Ratingdict = dictratingMatrix
+    #GPSdict = dictgpsMatrix
+    #gpsl= dfRATINGMatrix.values.tolist()
+    dictrateAndgpsMatrix = rateAndgpsMatrix.to_dict()
+    #size=len(dictratingMatrix)
+    #print(size)
+    #insert value
+    Lambda = 0.5
+    #kop=0
+    for row in rateMatrix.index:
+      o = int(re.sub("\D", "", str(row)))
+      #print("...",o)  
+      for column in range (len(rateMatrix.columns)):
+            p = int(rateMatrix.columns[column])
+            #print("---",p)
+            simRate = dictratingMatrix[o][p,]
+            simLoc  = dictgpsMatrix [o][p,]
+            valueToInsert = (Lambda * simLoc)+ ((1-Lambda) * simRate)
+            #print(valueToInsert)
+            dictrateAndgpsMatrix[o][p,] = valueToInsert
+            #kop +=1
+    print("Created Matrix Gps and rating Similarity")
+    dfrateAndgpsMatrix= pd.DataFrame(dictrateAndgpsMatrix)     
+    print(dfrateAndgpsMatrix)
+    # # #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Clustering part%%%%%%%%%%%%%%
+    print("Start to cluster ")
+    simArray = np.array(dfrateAndgpsMatrix)
+    num_clusters = clusters_per_batch
+    sc = SpectralClustering(num_clusters, affinity='precomputed')
+    sc.fit(simArray)
+    ratep=uniquedataframe.rating
+    bus=uniquedataframe.bus_id
+    #useid=df1.user_id
+    outputdict = dict(enumerate(sc.labels_.flatten(), 1))
+    listofgg= list(zip(sc.labels_ * 1000000,bus,ratep))
+    listofgg111= list(zip(df1.user_id,df1.bus_id,df1.rating))
+    output1= pd.DataFrame(listofgg, columns=['group_id', 'bus_id','rating'])
+    output2= pd.DataFrame(listofgg111, columns=['user_id', 'bus_id','rating'])
+    print("-------------",len(output1))
+    #---------- Recover Data Frame After Clustering
+    #print(output1)
+    #print(output2)
+    deleteduplicate = output2.drop_duplicates(subset=['user_id'])
+    deleteduplicate.reset_index(drop=True, inplace=True)
+    #print(deleteduplicate)
+    df_all_rows = pd.concat([output2.user_id],axis = 1)
+    #print(df_all_rows)
+    print("-----------------------------------------")
+
+    for i in range (len(output1)):
+      
+      value = output1.group_id[i]
+      ccc = deleteduplicate.user_id[i]
+      df_all_rows[df_all_rows.eq(ccc).any(1)] = value
+      
+      lastpart = pd.concat([df_all_rows.user_id, output2.bus_id, output2.rating],axis = 1)    
+    #print(lastpart )
+    print("Clustering is done")
+    print("Done Behnaz code ")
+    return lastpart
 
 
 # In[607]:
