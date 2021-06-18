@@ -88,6 +88,24 @@ def writeToFile(result, writePath):
                 rowToWrite.append(eachSim)
             writer.writerow(rowToWrite) 
 
+def readSimMat(matFilePath):
+    IndexToBus = defaultdict()
+    simMat     = defaultdict()
+    with open(matFilePath, 'r', newline = '', encoding = 'ISO-8859-1') as readfile:
+        reader = csv.reader(readfile)
+        for row in reader:
+            n = 1
+            for eachBus in row[1:]:
+                IndexToBus[n] = eachBus
+                n += 1
+            break
+        for row in reader:
+            simMat[row[0]] =defaultdict() 
+            for i in range(1, len(row)):
+                simMat[row[0]][IndexToBus[i]] = row[i]
+    return simMat
+            
+
 def extract_s_train(s,trainset):
     s_train = defaultdict()
     for _, i, _ in trainset.all_ratings():
@@ -102,10 +120,12 @@ def find_POI_neighbors(i, s_train, num_of_neighbors):
     return rankedPOI
     
     
-fileName = "aggregatedVectors.csv"
-writePath = os.path.dirname(os.path.realpath(__file__)) + "\\test.csv"
-result = generateBusSimMat(fileName)
-writeToFile(result,writePath)
+#fileName = "aggregatedVectors.csv"
+#writePath = os.path.dirname(os.path.realpath(__file__)) + "\\test.csv"
+#result = generateBusSimMat(fileName)
+#writeToFile(result,writePath)
+matFilePath = os.path.dirname(os.path.realpath(__file__)) + "/simMat.csv"
+readSimMat(matFilePath)
 
 
 
