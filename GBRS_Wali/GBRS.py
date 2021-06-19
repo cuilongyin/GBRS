@@ -26,7 +26,7 @@ class myModel(AlgoBase):
                  reg_all=.02, lr_bu=None, lr_bi=None, lr_pu=None, lr_qi=None,
                  reg_bu=None, reg_bi=None, reg_pu=None, reg_qi=None,
                  random_state=None, verbose=False, originalDic=None,
-                 numCtds = None):
+                 numCtds = None, busSimMat = None):
 
         self.n_factors = n_factors
         self.n_epochs = n_epochs
@@ -547,7 +547,7 @@ def totalRun(fileName, startYear, min_NO_rating, totalNOB, cluster_size, num_of_
 
 # In[ ]:
 
-'''
+
 fileName = "UC.csv"
 startYear = 2007
 min_NO_rating = 4      # 3: 22785 lines
@@ -558,10 +558,6 @@ factors = 3
 model = myModel
 num_of_centroids = 9
 
-#for i in range(1,15):  
-    #cluster_size = i
-    #for j in range(1,10):
-        #num_of_centroids = j
 totalRun(fileName,startYear, min_NO_rating, totalNOB, cluster_size, num_of_centroids )
 
 # The weighted sum from the centroids do not show a better result
@@ -578,8 +574,8 @@ totalRun(fileName,startYear, min_NO_rating, totalNOB, cluster_size, num_of_centr
         #rating_vec = combinedVec/sum(simList)
         #===============================================================
         #change to weighted average is worse, the reason is unclear.
-'''
 
+'''
 fileName = "Phoenix.csv"
 startYear = 2007
 min_NO_rating = 9999999999   # total is 576065, filtering is too slow because of the matrix being too large.
@@ -594,3 +590,4 @@ num_of_centroids = 9
     #for j in range(1,15):
         #num_of_centroids = j
 totalRun(fileName,startYear, min_NO_rating, totalNOB, cluster_size, num_of_centroids,batch_size )
+'''
