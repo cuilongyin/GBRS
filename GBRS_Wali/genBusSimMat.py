@@ -103,8 +103,7 @@ def readSimMat(matFilePath):
             simMat[row[0]] =defaultdict() 
             for i in range(1, len(row)):
                 simMat[row[0]][IndexToBus[i]] = row[i]
-    return simMat
-            
+    return simMat 
 
 def extract_s_train(s,trainset):
     s_train = defaultdict()
@@ -125,9 +124,7 @@ def find_POI_neighbors(i, s_train, num_of_neighbors):
 #result = generateBusSimMat(fileName)
 #writeToFile(result,writePath)
 matFilePath = os.path.dirname(os.path.realpath(__file__)) + "/simMat.csv"
-readSimMat(matFilePath)
-
-
+busSimMat = readSimMat(matFilePath)
 
 
 
