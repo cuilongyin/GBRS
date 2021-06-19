@@ -5,3 +5,4 @@ SimpleNMF/test.py
 *.txt
 GBRS_Wali/Urbana_Champaign_Vectors.csv
 GBRS_Wali/test.py
+GBRS_Wali/UC.csv
