@@ -105,18 +105,32 @@ def readSimMat(matFilePath):
                 simMat[row[0]][IndexToBus[i]] = row[i]
     return simMat 
 
+#currently useless
 def extract_s_train(s,trainset):
     s_train = defaultdict()
     for _, i, _ in trainset.all_ratings():
         s_train[i] = s[trainset.to_raw_iid(i)]
     return s_train
 
+
+
+def find_neighbors(raw_id, simMat, n_neighbors):
+
+    allPOIs = simMat[raw_id] # this is also a defaultdict
+    POI_sim_list = []
+    for eachPOI in allPOIs:
+        eachSim = allPOIs[eachPOI]
+        POI_sim_list.append((eachPOI,eachSim))
+    rankedPOIs = sorted(POI_sim_list, key=lambda tup: tup[1])
+    rankedPOIs = rankedPOIs[:n_neighbors]
+    
+    return rankedPOIs
+
+
 def cal_sum(s_train, i):
     return sum(s_train[i])
 
-def find_POI_neighbors(i, s_train, num_of_neighbors):
-    rankedPOI = s_train[i].sort(reverse=True)
-    return rankedPOI
+
     
     
 #fileName = "aggregatedVectors.csv"
