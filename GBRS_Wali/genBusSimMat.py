@@ -113,7 +113,6 @@ def extract_s_train(s,trainset):
     return s_train
 
 
-
 def find_neighbors(raw_id, simMat, n_neighbors):
 
     allPOIs = simMat[raw_id] # this is also a defaultdict
