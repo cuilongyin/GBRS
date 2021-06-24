@@ -5,7 +5,7 @@ import pandas as pd
 from collections import defaultdict
 from numpy import dot
 from numpy.linalg import norm
-
+import pickle
 import cProfile
 
 def createPandasDataFrame(fileName):
@@ -135,15 +135,15 @@ def cal_sum_sij(iNeighbors):
 
 
 
-    
-    
-#fileName = "aggregatedVectors.csv"
-#writePath = os.path.dirname(os.path.realpath(__file__)) + "\\test.csv"
-#result = generateBusSimMat(fileName)
+fileName = "aggregatedVectors.csv"
+writePath = os.path.dirname(os.path.realpath(__file__)) + "\\simMat.bin"
+result = generateBusSimMat(fileName)
 #writeToFile(result,writePath)
-matFilePath = os.path.dirname(os.path.realpath(__file__)) + "/simMat.csv"
-busSimMat = readSimMat(matFilePath)
-
+#matFilePath = os.path.dirname(os.path.realpath(__file__)) + "/simMat.csv"
+#busSimMat = readSimMat(matFilePath)
+#file = os.path.abspath(__file__+"/..")+ "/" + fileName
+with open(writePath, 'wb') as handle:
+    pickle.dump(result, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 #cProfile.run('generateBusSimMat(fileName)')
