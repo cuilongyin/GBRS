@@ -1,22 +1,23 @@
 # coding: utf-8
 # In[594]:
-import math
 import os
-import numpy as np
-from sklearn.cluster import KMeans
-from surprise import Dataset
-from surprise import Reader
-from surprise import accuracy
-from surprise.model_selection import train_test_split
+import csv
+import math
+import pickle
 import platform
+import numpy as np
 import pandas as pd
-from surprise import AlgoBase
-from surprise.utils import get_rng
-from surprise import PredictionImpossible
-from collections import defaultdict
 from numpy import dot
+from surprise import Reader
+from surprise import Dataset
+from surprise import accuracy
+from surprise import AlgoBase
 from numpy.linalg import norm
-
+from surprise.utils import get_rng
+from sklearn.cluster import KMeans
+from collections import defaultdict
+from surprise import PredictionImpossible
+from surprise.model_selection import train_test_split
 
 # In[595]:
 class myModel(AlgoBase):
@@ -24,7 +25,7 @@ class myModel(AlgoBase):
     def __init__(self, n_factors=100, n_epochs=20, biased=True, init_mean=0,
                  init_std_dev=.1, lr_all=.005,
                  reg_all=.02, lr_bu=None, lr_bi=None, lr_pu=None, lr_qi=None,
-                 reg_bu=None, reg_bi=None, reg_pu=None, reg_qi=None,
+                 reg_bu=None, reg_bi=None, reg_pu=None, reg_qi=None, reg_qj=None,
                  random_state=None, verbose=False, originalDic=None,
                  numCtds = None, busSimMat = None):
 
@@ -41,6 +42,7 @@ class myModel(AlgoBase):
         self.reg_bi = reg_bi if reg_bi is not None else reg_all
         self.reg_pu = reg_pu if reg_pu is not None else reg_all
         self.reg_qi = reg_qi if reg_qi is not None else reg_all
+        self.reg_qj = reg_qj if reg_qj is not None else reg_all
         self.random_state = random_state
         self.verbose = verbose
         self.originalDic = originalDic
@@ -49,6 +51,7 @@ class myModel(AlgoBase):
         self.simDic = defaultdict()
         self.num_predicted = 0      
         self.num_centroids = numCtds
+        self.busSimMat = busSimMat
         AlgoBase.__init__(self)
 
     def fit(self, trainset):
@@ -61,7 +64,6 @@ class myModel(AlgoBase):
     def sgd(self, trainset):
         print("Strat sgd ...")
         rng = get_rng(self.random_state)
-
         bu = np.zeros(trainset.n_users, np.double)
         bi = np.zeros(trainset.n_items, np.double)
         pu = rng.normal(self.init_mean, self.init_std_dev,
@@ -90,15 +92,23 @@ class myModel(AlgoBase):
                     bu[u] += self.lr_bu * (err - self.reg_bu * bu[u])
                     bi[i] += self.lr_bi * (err - self.reg_bi * bi[i])
 
+                # fine i's neighbors
+                i_raw = trainset.to_raw_iid(i)
+                i_j_simList = self.find_neighbors(i_raw)
+                jList = [trainset.to_inner_iid(each[0]) for each in i_j_simList]
+                simList = [each[1] for each in i_j_simList]
+
                 # update factors
                 for f in range(self.n_factors):
                     puf = pu[u, f]
                     qif = qi[i, f]
+                    qjfs = []
+                    for j in jList:
+                        qjfs.append(qi[j, f])
                     pu[u, f] += self.lr_pu * (err * qif - self.reg_pu * puf)
-                    qi[i, f] += self.lr_qi * (err * puf - self.reg_qi * qif)
-                    #qi[i,f] += self.lr_qi * (err * puf - (self.reg_qi + self.reg_qi2 (sum (s[i]))\
-                                                          #+self.reg_qi2 (sum(s[i][j]*qj)) )
-                                                          # s dic of dic
+                    #qi[i, f] += self.lr_qi * (err * puf - self.reg_qi * qif)
+                    qi[i,f] += self.lr_qi * (err * puf - (self.reg_qi + self.reg_qj * sum(simList)) * qif + self.reg_qj * np.dot(simList, qjfs) )
+                                                          
                 n += 1
         self.bu = bu
         self.bi = bi
@@ -201,8 +211,22 @@ class myModel(AlgoBase):
             if n%100 == 0:
                 print(f"simDic is calculating, {n} users in original are updated...")
         print("Done sim calculating ....")
-        return self           
-    
+        return self 
+
+    def find_neighbors(self, raw_iid, n_neighbors = 6):
+
+        if raw_iid in self.busSimMat:
+            allPOIs = self.busSimMat[raw_iid] # this is also a defaultdict
+        else:
+            allPOIs = []
+        POI_sim_list = []
+        for eachPOI in allPOIs:
+            eachSim = allPOIs[eachPOI]
+            POI_sim_list.append((eachPOI,eachSim))
+        rankedPOIs = sorted(POI_sim_list, key=lambda tup: tup[1], reverse=True)
+        rankedPOIs = rankedPOIs[:n_neighbors]
+        return rankedPOIs
+        
     def estimate(self, u,i):
         self.num_predicted += 1
         
@@ -411,9 +435,10 @@ def readDataFrame(df_train, df_test, df_trainOrignal): # to generate train/test 
 # In[611]:
 
 
-def train(model, trainSet, factors, epochs, random , originalDic, num_of_centroids):
+def train(model, trainSet, factors, epochs, random , originalDic, num_of_centroids, busSimMat):
     print("Start training ...")
-    Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, originalDic = originalDic, numCtds = num_of_centroids, verbose = False)
+    Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, originalDic = originalDic,
+                       numCtds = num_of_centroids, busSimMat = busSimMat, verbose = False)
     Algorithm.fit(trainSet)
     print("Done ...")
     return Algorithm
@@ -514,15 +539,16 @@ def prpareTrainTestObj(df, batch_size, NOofBatches, cluster_size):
     
 # In[616]:
 
-def batchRun(model, trainSet, originalDic, testSet, num_of_centroids, log, epochs = 40, random = 6, MAE = 1, RMSE = 1 ): 
-    trainedModel = train(model, trainSet, factors, epochs, random, originalDic, num_of_centroids)
+def batchRun(model, trainSet, originalDic, testSet, num_of_centroids, log, busSimMat, epochs = 40, random = 6, MAE = 1, RMSE = 1 ): 
+
+    trainedModel = train(model, trainSet, factors, epochs, random, originalDic, num_of_centroids, busSimMat)
     test(trainedModel, testSet, log, mae = MAE, rmse = RMSE)
 
 
 # In[616]:
 
 
-def totalRun(fileName, startYear, min_NO_rating, totalNOB, cluster_size, num_of_centroids, maxEpochs = 40, Random = 6, mae = True, rmse = True):
+def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size, num_of_centroids, maxEpochs = 40, Random = 6, mae = True, rmse = True):
     # if you need to see results, set mae or rmse to True
     # Randome is Random state 
     if platform.system() == 'Windows':
@@ -539,10 +565,14 @@ def totalRun(fileName, startYear, min_NO_rating, totalNOB, cluster_size, num_of_
     log = open(output, 'w')
     log.write('RMSE, MAE\n')
     df = prepareDf(fileName, startYear, min_NO_rating)
+    file ="testFile"
+    matFilePath = os.path.abspath(__file__+"/..")+ "/" + file
+    with open(matFilePath, 'rb') as handle:
+        busSimMat = pickle.load(handle)
     for XthBatch in range(1,totalNOB+1):
         print(f"=================Starting the {XthBatch}th batch=================")
         trainSet, testSet, originalDic = prpareTrainTestObj(df, batch_size, XthBatch, cluster_size)
-        batchRun(myModel, trainSet, originalDic, testSet, num_of_centroids, log, epochs = maxEpochs, random = Random, MAE = mae, RMSE = rmse )
+        batchRun(model, trainSet, originalDic, testSet, num_of_centroids, log,busSimMat, epochs = maxEpochs, random = Random, MAE = mae, RMSE = rmse )
     log.close
 
 # In[ ]:
@@ -558,7 +588,7 @@ factors = 3
 model = myModel
 num_of_centroids = 9
 
-totalRun(fileName,startYear, min_NO_rating, totalNOB, cluster_size, num_of_centroids )
+totalRun(model, fileName,startYear, min_NO_rating, totalNOB, cluster_size, num_of_centroids )
 
 # The weighted sum from the centroids do not show a better result
 # this was added at GBRS class, estimate function
