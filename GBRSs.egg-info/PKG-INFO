@@ -1,12 +1,11 @@
-Metadata-Version: 1.1
+Metadata-Version: 2.1
 Name: GBRSs
-Version: 0.0.1
+Version: 0.0.2
 Summary: The GBRSs Module Series
 Home-page: UNKNOWN
 Author: Longyin Cui
 Author-email: <cuilongyin@hotmail.com>
 License: UNKNOWN
-Description: This package is supposed to allow the running of all GBRS models.
 Keywords: python,recommender systems,privacy preserving
 Platform: UNKNOWN
 Classifier: Development Status :: 3 - Alpha
@@ -15,3 +14,6 @@ Classifier: Programming Language :: Python :: 2
 Classifier: Programming Language :: Python :: 3
 Classifier: Operating System :: MacOS :: MacOS X
 Classifier: Operating System :: Microsoft :: Windows
+
+This package is supposed to allow the running of all GBRS models.
+
