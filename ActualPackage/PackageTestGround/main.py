@@ -3,7 +3,7 @@ import os
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../")
 import ActualPackage.models.vanilla as models
 import ActualPackage.functions.methods as functions
-def main():
+def main_vanilla():
     model = models.GBRS_vanilla
     fileName = "UC.csv"
     startYear = 2007
@@ -17,4 +17,4 @@ def main():
          totalNOB, cluster_size, batch_size, num_of_centroids, factors )
 
 if __name__ == "__main__":
-    main()
+    main_vanilla()
