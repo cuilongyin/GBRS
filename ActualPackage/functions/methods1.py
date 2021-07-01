@@ -295,8 +295,8 @@ def prpareTrainTestObj(df, batch_size, NOofBatches, cluster_size):
     
 # In[616]:
 
-def batchRun(model, trainSet, originalDic, testSet, num_of_centroids,
-             factors, log, busSimMat, epochs = 40, random = 6, MAE = 1, RMSE = 1 ):
+def batchRun(model, trainSet, originalDic, testSet, num_of_centroids, 
+             factors, log, busSimMat, epochs = 40, random = 6, MAE = 1, RMSE = 1 ): 
 
     trainedModel = train(model, trainSet, factors, epochs, random, originalDic, num_of_centroids, busSimMat)
     test(trainedModel, testSet, log, mae = MAE, rmse = RMSE)
@@ -333,6 +333,6 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
     for XthBatch in range(1,totalNOB+1):
         print(f"=================Starting the {XthBatch}th batch=================")
         trainSet, testSet, originalDic = prpareTrainTestObj(df, batch_size, XthBatch, cluster_size)
-        batchRun(model, trainSet, originalDic, testSet, num_of_centroids, factors, 
+        batchRun(model, trainSet, originalDic, testSet, num_of_centroids, factors,
                  log, busSimMat, epochs = maxEpochs, random = Random, MAE = mae, RMSE = rmse )
     log.close
