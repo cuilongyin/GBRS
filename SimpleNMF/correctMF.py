@@ -1,95 +1,95 @@
-import numbers
 import os
 import csv
-import pandas as pd
+import numbers
 import numpy as np
+import pandas as pd
 from collections import defaultdict
 
 
 #Creat a pandas dataframe from a file, the file is in the same folder, check its format
 #the input is a string of the file name
 def createPandasDataFrame(fileName): # this applies to windows, if you are using a linex or Mac, change next line
-    inputFile = os.path.abspath(__file__+"/..")+ "\\" + fileName # <---- this is what I mean
+    inputFile = os.path.abspath(__file__+"/..")+ "/" + fileName # <---- this is what I mean
     print(f"Reading this file: {inputFile}")
     df = pd.read_csv(inputFile)
     return df
 #this function generates four fucntions, this is how people usually translate IDs from raw to inner
 #I explained what is raw and inner ID in later sections.
-def genFourDics(fileName):# this applies to windows, if you are using a linex or Mac, change next line
-    rPath = os.path.abspath(__file__+"/..")+ "\\" + fileName # <---- this is what I mean
-    ratingsPath = rPath
+def genFourDics(df):# this applies to windows, if you are using a linex or Mac, change next line
     uid = []
     iid = []
-    with open(ratingsPath, newline = '', encoding = 'ISO-8859-1') as csvfile:
-        reader = csv.reader(csvfile)
-        next(reader) # pay attention to this row!!!!
-        for row in reader:
-            uid.append(row[0])
-            iid.append(row[1])
+    for user in df['userId']:
+        uid.append(user)
+    for movie in df['movieId']:
+        iid.append(movie)
     to_inner_uid = defaultdict()
     to_inner_iid = defaultdict()
     to_outer_uid = defaultdict()
     to_outer_iid = defaultdict()
-    #================== uid ==============================
+#================== uid ==============================
     for eachID in uid:
         if eachID not in to_inner_uid:
             innerID = len(to_inner_uid)
             to_outer_uid[innerID] = eachID
-            to_inner_uid[eachID] = innerID
+            to_inner_uid[eachID] = int(innerID)
     #================== iid ==============================
     for eachID in iid:
         if eachID not in to_inner_iid:
             innerID = len(to_inner_iid)
             #print(innerID)
             to_outer_iid[innerID] = eachID
-            to_inner_iid[eachID] = innerID  
+            to_inner_iid[eachID] = int(innerID)  
             #  
-    return to_inner_uid, to_outer_uid, to_inner_iid, to_outer_iid        
+    return to_inner_uid, to_outer_uid, to_inner_iid, to_outer_iid                
 
 # This function conferts a dataframe from raw IDs to inner IDs.
 # The inputs are a dataframe of raw IDs and a string name of the data file
-def convertToInner(df_input, fileName):
+def convertToInner(df_input, to_inner_uid, to_inner_iid):
     df = df_input
-    to_inner_uid, to_outer_uid, to_inner_iid, to_outer_iid = genFourDics(fileName)
-    #['user_id', 'bus_id', 'rating', 'date','lat','lon','text']
-    #userId,movieId,rating,timestamp
+    #to_inner_uid, _, to_inner_iid, _ = genFourDics(df)
     uids = df['userId']
     inner_uid = []
     for eachOuter in uids:
-        inner_uid.append(to_inner_uid[str(eachOuter)])
+        inner_uid.append(int(to_inner_uid[eachOuter]))
     iids = df['movieId']
     inner_iid = []
     for eachOuter in iids:
-        inner_iid.append(to_inner_iid[str(eachOuter)])
-    d = {'userId':inner_uid, 'movieId': inner_iid}
+        iid = int(to_inner_iid[eachOuter])
+        inner_iid.append(iid)
+
+    ratings = []
+    for eachRating in df['rating']:
+        ratings.append(eachRating)
+
+    timestamps = []
+    for eachTime in df['timestamp']:
+        timestamps.append(eachTime)
+
+    d = {'userId':inner_uid, 'movieId': inner_iid, 'rating' : ratings, 'timestamp' : timestamps}
     df1 = pd.DataFrame(data=d)
-    df['userId'] = df1['userId']
-    df['movieId']  = df1['movieId']
-    return df
+    
+    return df1
 
 
 #This function conferts a dataframe from inner IDs to raw IDs.
 #The inputs are same things compared to the above one.
-def convertToOuter(df_input, fileName):
+def convertToOuter(df_input, to_outer_uid, to_outer_iid):
     df = df_input
-    to_inner_uid, to_outer_uid, to_inner_iid, to_outer_iid = genFourDics(fileName)
-    #['user_id', 'bus_id', 'rating', 'date','lat','lon','text']
-    uids = df['user_id']
+    uids = df['userId']
     outer_uid = []
     for eachInner in uids:
         if eachInner in to_outer_uid:
             outer_uid.append(to_outer_uid[eachInner])
         else:
             outer_uid.append(eachInner)
-    iids = df['bus_id']
-    print(type(iids))
+    iids = df['movieId']
+    #print(type(iids))
     outer_iid = []
     for eachInner in iids:
         outer_iid.append(to_outer_iid[eachInner])
-    d = {'user_id':outer_uid, 'bus_id': outer_iid}
+    d = {'userId':outer_uid, 'movieId': outer_iid}
     df1 = pd.DataFrame(data=d)
-    df['user_id'] = df1['user_id']
-    df['bus_id']  = df1['bus_id']
+    df = df1[['userId', 'movieId']].copy()
     return df
 
 # this function partition the entire dataset into the training set and testing set
@@ -117,8 +117,15 @@ def get_rng(random_state):
 
 # this function extract a simple list out of the dataframe.
 # the structure of the list is [(u,i,r),(u,i,r),(u,i,r),(u,i,r), ...] u:user, i: movie, r: rating
-def to_u_i_r_list(df): #modify this function when you need to use other column names 
+def to_u_i_r_list(df, convertToInt = False): #modify this function when you need to use other column names 
     u_i_rList = []
+    convert_dict = {'userId': int,
+                    'movieId': int, 
+                    'rating':float
+                    }
+    if convertToInt == True:
+        df = df.astype(convert_dict)
+
     for row in df.itertuples():
         u_i_rList.append((row.userId, row.movieId, row.rating))# <----this is what I mean
     return u_i_rList
@@ -167,8 +174,8 @@ def toMatrixDicI(u_i_r_list):
 # reg_pu, reg_qi are the learning rate for pu and qi, I have default values for them
 # However, if you think you are confident enough, feel free to change them
 
-def sgd(u_i_r_list, n_factors, n_epochs = 1, lr_pu = 0.2, lr_qi = 0.2, reg_pu=.02,
-        reg_qi=.02, init_mean = 0, init_std_dev = 0.1, random_state=None):
+def sgd(u_i_r_list, n_factors, n_epochs = 3, lr_pu = 0.1, lr_qi = 0.1, reg_pu=.01,
+        reg_qi=.01, init_mean = 0, init_std_dev = 0.1, random_state=None):
         rng = get_rng(random_state)
         MatrixDicU = toMatrixDicU(u_i_r_list)
         MatrixDicI = toMatrixDicI(u_i_r_list)
@@ -178,8 +185,11 @@ def sgd(u_i_r_list, n_factors, n_epochs = 1, lr_pu = 0.2, lr_qi = 0.2, reg_pu=.0
         print(f"there are {n_items} movies in train")
         pu  = rng.normal(init_mean, init_std_dev,(n_users, n_factors))
         qi  = rng.normal(init_mean, init_std_dev,(n_items, n_factors))
+        #pu  = np.ones((n_users, n_factors))
+        #qi  = np.ones((n_items, n_factors))
 
         for current_epoch in range(n_epochs):
+            
             print("Processing epoch {}".format(current_epoch))
             for u, i, r in u_i_r_list:
                 # compute current error
@@ -187,6 +197,7 @@ def sgd(u_i_r_list, n_factors, n_epochs = 1, lr_pu = 0.2, lr_qi = 0.2, reg_pu=.0
                 for f in range(n_factors):
                     dot += qi[i, f] * pu[u, f]
                 err = r - dot
+                print(err, '...' , r , '...' , dot)
                 # update factors
                 for f in range(n_factors):
                     puf = pu[u, f]
@@ -214,25 +225,26 @@ class Test(object):
        user = 0
        item = 0
 
-def predict(u, i, pu, qi):
-    Test.i += 1
-    if u not in pu:
-        print(f"User {u} not in traning set ...")
+def predict(u, i, pu, qi, to_inner_uid, to_inner_iid):
+    if u not in to_inner_uid:
+        #print(f"User {u} not in traning set ...")
         return 3.5
-    Test.user += 1
-    if i not in qi:
-        print(f"Item {i} not in traning set ...")
+    else:
+        inner_u = to_inner_uid[u]
+    if i not in to_inner_iid:
+        #print(f"Movie {i} not in traning set ...")
         return 3.5
-    Test.n += 1
-    return np.dot(qi[i], pu[u])
+    else:
+        inner_i = to_inner_iid[i]
+    return np.dot(qi[inner_i], pu[inner_u])
 
 # This one calculate the mean absolute errors, you do need to retrieve it then print it
 # you need the trained pu and qi and the u_i_r_list from the test set.
 # Yes, I call it testList.
-def calMae(testList, pu, qi):
+def calMae(testList, pu, qi, to_inner_uid, to_inner_iid ):
     predictions = []
     for u, i, r in testList:
-        prediction = predict(u, i, pu, qi)
+        prediction = predict(u, i, pu, qi, to_inner_uid, to_inner_iid)
         predictions.append((r,prediction))
     MAE = np.mean([float(abs(true_r - est)) for (true_r, est) in predictions])
     return MAE
@@ -245,24 +257,24 @@ ratio = 0.9
 # select the number of latent factors
 n_factors = 10
 # load up the data
-outer_df = createPandasDataFrame(fileName)     # outer_df is the dataframe that contains the original ID
-inner_df = convertToInner(outer_df, fileName)  # inner_df is the dataframe that has the inner ID, like 0,1,2,3 ...
-train_df, test_df = partition(inner_df, ratio) # partition here, the train, ratio is how many percent you
-                                               # want in the training set
-
-train_df, test_df = furtherFilter(train_df, test_df)   
-temp = inner_df['movieId'].drop_duplicates()
-print(temp)                              
-# partition the data
-trainList = to_u_i_r_list(train_df)           
-testList  = to_u_i_r_list(test_df)
+outer_df = createPandasDataFrame(fileName)
+train_df, test_df = partition(outer_df, ratio)     
+to_inner_uid, to_outer_uid, to_inner_iid, to_outer_iid = genFourDics(train_df)
+inner_train_df = convertToInner(train_df, to_inner_uid, to_inner_iid)
+print('#....')
+#outer_train_df = convertToOuter(train_df, to_outer_uid, to_outer_iid)  
+#temp = inner_df['movieId'].drop_duplicates()
+#print(temp)                              
+#print(inner_train_df == outer_train_df)
+#print(inner_train_df)    
+trainList = to_u_i_r_list(inner_train_df, True)
+testList  = to_u_i_r_list(test_df, False)
 #print(testList)
 # train the model
 pu, qi = sgd(trainList, n_factors)
 
 # test the model
-mae = calMae(testList, pu, qi)
-print(Test.i)
-print(Test.n)
-print(Test.user)
-#print(f"MAE is {mae} ")
+print(pu)
+print(qi)
+mae = calMae(testList, pu, qi, to_inner_uid, to_inner_iid)
+print(f"MAE is {mae} ")

@@ -193,8 +193,12 @@ def readDataFrame(df_train, df_test, df_trainOrignal): # to generate train/test 
 
 def train(model, trainSet, factors, epochs, random , originalDic, num_of_centroids, busSimMat):
     print("Start training ...")
-    Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, originalDic = originalDic,
-                       numCtds = num_of_centroids, busSimMat = busSimMat, verbose = False)
+    if busSimMat != None:
+        Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, originalDic = originalDic,
+                           numCtds = num_of_centroids, busSimMat = busSimMat, verbose = False)
+    else:
+        Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, originalDic = originalDic,
+                           numCtds = num_of_centroids, verbose = False)
     Algorithm.fit(trainSet)
     print("Done ...")
     return Algorithm
