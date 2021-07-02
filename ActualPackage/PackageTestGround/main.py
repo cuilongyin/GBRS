@@ -13,8 +13,9 @@ def main_vanilla():
     totalNOB = 33           #number of Batch, not including the test batch
     factors = 3
     num_of_centroids = 9
-    functions.totalRun(fileName,model, startYear, min_NO_rating,\
-         totalNOB, cluster_size, batch_size, num_of_centroids, factors )
-
+    POIsims = 0
+    functions.totalRun(model, fileName, startYear, min_NO_rating,\
+         totalNOB, cluster_size, batch_size, num_of_centroids, factors,POIsims )
+def main_
 if __name__ == "__main__":
     main_vanilla()
