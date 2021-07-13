@@ -8,3 +8,10 @@ GBRS_Wali/test.py
 GBRS_Wali/testFile
 ActualModule/assisting_functions/__pycache__/functions.cpython-38.pyc
 ActualModule/models/__pycache__/GBRS_vanilla.cpython-38.pyc
+test/training_triplets.csv
+test/CourseMF.py
+test/neighbor_lists.dict
+test/prereq.dict
+test/Results.csv
+test/test_triplets.csv
+test/test.py
