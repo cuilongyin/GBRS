@@ -165,6 +165,84 @@ def cluster_KMean_userRating(df, Xth_batch, clusters_per_batch):
 
     return df
 
+def cluster_spectral(curr_df, Xth_batch, clusters_per_batch):
+    global_mean = curr_df.loc[:,'rating'].mean()
+    dfMatrix = curr_df.pivot(index='user_id', columns = 'bus_id', values = 'rating') 
+    for uid,_ in dfMatrix.iterrows():
+        for iid in dfMatrix:
+            if math.isnan(dfMatrix.at[uid,iid]):
+                dfMatrix.at[uid,iid] = dfMatrix.mean(axis = 1)[uid] + dfMatrix.mean(axis = 0)[iid] - global_mean
+    #=============================================== Finished Imputation =============================================
+    userList = []
+    latList  = []
+    lonList  = []
+    for eachUser in curr_df.user_id:
+        lat_mean = curr_df.loc[curr_df['user_id'] == eachUser].lat.mean()
+        lon_mean = curr_df.loc[curr_df['user_id'] == eachUser].lon.mean()
+        userList.append(eachUser)
+        latList.append(lat_mean)
+        lonList.append(lon_mean)
+    print(latList)
+    locDf = pd.DataFrame({'user_id':userList,
+                                'lat': latList,
+                                'lon': lonList 
+                                })
+    
+    locDf = locDf.drop_duplicates().reset_index(drop=True)
+    #============================================== Finished Location Simulation==========================================
+
+    user1s  = []
+    user2s  = []
+    GPSsims = []
+    Rsims   = []
+    for index1, row1 in locDf.iterrows():
+        for index2, row2 in locDf.iterrows():
+            A = [row1['lat'],row1['lon']]
+            B = [row2['lat'],row2['lon']]
+            sim = np.dot(A,B)/(np.linalg.norm(A)*np.linalg.norm(B))
+            user1s.append(row1['user_id'])
+            user2s.append(row2['user_id'])
+            GPSsims.append(sim)
+
+    for user1 in dfMatrix.index:
+        for user2 in dfMatrix.index:
+            A = dfMatrix.loc[user1].values.tolist()
+            B = dfMatrix.loc[user2].values.tolist()
+            sim = np.dot(A,B)/(np.linalg.norm(A)*np.linalg.norm(B))
+            Rsims.append(sim)
+    ratio = 0.5
+    sims1 = [i*ratio for i in GPSsims]
+    sims2 = [i*(1-ratio) for i in Rsims]
+    combinedSims = list(map(add, sims1, sims2))
+
+    simMat = pd.DataFrame({'user_id_R': user1s,
+                           'user_id_C': user2s,
+                                 'sim': combinedSims 
+                           })
+    simMat = simMat.pivot( index='user_id_R', columns = 'user_id_C', values = 'sim') 
+
+ #============================================== Finished Calculate Sims ==========================================
+    simArray = np.array(simMat)
+    num_clusters = clusters_per_batch
+    sc = SpectralClustering(num_clusters, affinity='precomputed')
+    sc.fit(simArray)
+    #================================================ Finished Clustering ==============================================
+    groupIDs = []
+    for eachLabel in sc.labels_:
+        groupIDs.append(eachLabel + Xth_batch* 1000000)
+
+    toGroupId = defaultdict()
+    for i in range(len(groupIDs)):
+        toGroupId[dfMatrix.index.values[i]] = groupIDs[i]
+
+    originalIdList = curr_df.user_id
+    outputIdList   = []
+    for eachId in originalIdList:
+        outputIdList.append(toGroupId[eachId])
+
+    curr_df.user_id = outputIdList
+    #================================================ Finished Modifying Original DF ========================================   
+    return curr_df
 
 # In[607]:
 
@@ -329,7 +407,7 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
     log.write('RMSE, MAE\n')
     df = prepareDf(fileName, startYear, min_NO_rating)
     if POIsims == True:
-        matFilePath = os.path.abspath(__file__+"/..")+ "/" + "testFile"
+        matFilePath = os.path.abspath(__file__+"/../../PackageTestGround" + "/POIsims.bin") 
         with open(matFilePath, 'rb') as handle:
             busSimMat = pickle.load(handle)
     else:
