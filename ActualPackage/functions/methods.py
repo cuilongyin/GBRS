@@ -2,12 +2,15 @@ import os
 import math
 import pickle
 import platform
+import numpy as np
 import pandas as pd
+from operator import add
 from surprise import Reader
 from surprise import Dataset
 from surprise import accuracy
 from sklearn.cluster import KMeans
 from collections import defaultdict
+from sklearn.cluster import SpectralClustering
 from surprise.model_selection import train_test_split
 # In[596]:
 
