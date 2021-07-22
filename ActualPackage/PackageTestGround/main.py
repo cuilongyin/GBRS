@@ -6,7 +6,7 @@ import ActualPackage.models.POIsims as POI
 import ActualPackage.functions.methods as functions
 
 def main_vanilla():
-    model1 = vanila.GBRS_vanilla
+    model = vanila.GBRS_vanilla
     fileName = "UC.csv"
     startYear = 2007
     min_NO_rating = 9999999999   # total is 576065, filtering is too slow because of the matrix being too large.
