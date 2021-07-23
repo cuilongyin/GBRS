@@ -18,8 +18,7 @@ from surprise.model_selection import train_test_split
 def createPandasDataFrame(fileName):
     inputFile = os.path.abspath(__file__+"/../../")+ "/PackageTestGround/" + fileName
     print(f"Reading this file: {inputFile}")
-    df = pd.read_csv(inputFile)
-    return df
+    return pd.read_csv(inputFile)
 
 
 # In[597]:
@@ -29,7 +28,7 @@ def filiterYear(df, startYear): # startYear is an integer
     print("Sorting data ...")
     df = df.sort_values(by = 'date')
     print("Done.")
-    for i in range(2004, startYear, 1):
+    for i in range(2004, startYear):
         df = df[~df.date.str.contains(str(i))]
     df = df.reset_index(drop = True)
     #print(df)
@@ -87,7 +86,7 @@ def removeUsers(df, min_NO_ratings):
 # In[602]:
 
 
-def creatingXthBatch_clustered(df, batch_size, Xth_batch, cluster_size): #1 based, Do not put 0 or below
+def creatingXthBatch_clustered(df, batch_size, Xth_batch, cluster_size, method): #1 based, Do not put 0 or below
     if Xth_batch <= 0:
         raise Exception("1-based, DO NOT put 0 or below")
     
@@ -96,7 +95,13 @@ def creatingXthBatch_clustered(df, batch_size, Xth_batch, cluster_size): #1 base
     else:
         curr_df = df.iloc[(batch_size*(Xth_batch-1)):(len(df.index))]
         print(f"test set not enough, only {len(curr_df.index)} left")
-    clustered = cluster_KMean_userRating(curr_df, Xth_batch, cluster_size)
+    
+    if method == 'kmean' :
+        clustered = cluster_KMean_userRating(curr_df, Xth_batch, cluster_size)
+    elif method == 'spectral' :
+        clustered = cluster_spectral(curr_df, Xth_batch, cluster_size)
+    else:
+        return curr_df
     return clustered
 
 # In[603]:
@@ -116,7 +121,7 @@ def creatingXthBatch_unClustered(df, batch_size, Xth_batch): #1 based, Do not pu
 # In[604]:
 
 
-def createTrainDf_clustered(df, batch_size, NOofBatches, cluster_size):
+def createTrainDf_clustered(df, batch_size, NOofBatches, cluster_size, method):
     trainList = []
     trainList = []
     startFrom = 1
@@ -125,7 +130,7 @@ def createTrainDf_clustered(df, batch_size, NOofBatches, cluster_size):
     #else:
         #startFrom = NOofBatches - 4
     for i in range(startFrom, NOofBatches+1):
-        trainList.append(creatingXthBatch_clustered(df, batch_size, i, cluster_size))
+        trainList.append(creatingXthBatch_clustered(df, batch_size, i, cluster_size, method))
     trainSet = pd.concat(trainList)   
     trainSet = trainSet.reset_index(drop=True)
     return trainSet
@@ -169,13 +174,27 @@ def cluster_KMean_userRating(df, Xth_batch, clusters_per_batch):
     return df
 
 def cluster_spectral(curr_df, Xth_batch, clusters_per_batch):
+
+    print(f"--- Performing {Xth_batch}th batch clustering (spectral) ---")
     global_mean = curr_df.loc[:,'rating'].mean()
-    dfMatrix = curr_df.pivot(index='user_id', columns = 'bus_id', values = 'rating') 
+    dfMatrix = curr_df.pivot(index='user_id', columns = 'bus_id', values = 'rating')
+    bu = defaultdict()
+    bi = defaultdict()
+
     for uid,_ in dfMatrix.iterrows():
+        if uid not in bu:
+            bu[uid] = dfMatrix.mean(axis = 1)[uid]
+
         for iid in dfMatrix:
-            if math.isnan(dfMatrix.at[uid,iid]):
-                dfMatrix.at[uid,iid] = dfMatrix.mean(axis = 1)[uid] + dfMatrix.mean(axis = 0)[iid] - global_mean
-    #=============================================== Finished Imputation =============================================
+            if iid not in bi:
+                bi[iid] = dfMatrix.mean(axis = 0)[iid]
+
+            #if math.isnan(dfMatrix.at[uid,iid]):
+            if dfMatrix.at[uid,iid].isnan():
+                dfMatrix.at[uid,iid] = bu[uid] + bi[iid] - global_mean
+
+    #======================= Finished Imputation =======================
+
     userList = []
     latList  = []
     lonList  = []
@@ -185,11 +204,10 @@ def cluster_spectral(curr_df, Xth_batch, clusters_per_batch):
         userList.append(eachUser)
         latList.append(lat_mean)
         lonList.append(lon_mean)
-    print(latList)
-    locDf = pd.DataFrame({'user_id':userList,
-                                'lat': latList,
-                                'lon': lonList 
-                                })
+    locDf = pd.DataFrame({'user_id': userList,
+                          'lat'    : latList ,
+                          'lon'    : lonList 
+                          })
     
     locDf = locDf.drop_duplicates().reset_index(drop=True)
     #============================================== Finished Location Simulation==========================================
@@ -206,13 +224,15 @@ def cluster_spectral(curr_df, Xth_batch, clusters_per_batch):
             user1s.append(row1['user_id'])
             user2s.append(row2['user_id'])
             GPSsims.append(sim)
-
+ 
     for user1 in dfMatrix.index:
         for user2 in dfMatrix.index:
             A = dfMatrix.loc[user1].values.tolist()
             B = dfMatrix.loc[user2].values.tolist()
             sim = np.dot(A,B)/(np.linalg.norm(A)*np.linalg.norm(B))
             Rsims.append(sim)
+
+
     ratio = 0.5
     sims1 = [i*ratio for i in GPSsims]
     sims2 = [i*(1-ratio) for i in Rsims]
@@ -224,12 +244,13 @@ def cluster_spectral(curr_df, Xth_batch, clusters_per_batch):
                            })
     simMat = simMat.pivot( index='user_id_R', columns = 'user_id_C', values = 'sim') 
 
- #============================================== Finished Calculate Sims ==========================================
+    #============================================== Finished Calculate Sims ==========================================
     simArray = np.array(simMat)
     num_clusters = clusters_per_batch
     sc = SpectralClustering(num_clusters, affinity='precomputed')
     sc.fit(simArray)
     #================================================ Finished Clustering ==============================================
+
     groupIDs = []
     for eachLabel in sc.labels_:
         groupIDs.append(eachLabel + Xth_batch* 1000000)
@@ -243,7 +264,8 @@ def cluster_spectral(curr_df, Xth_batch, clusters_per_batch):
     for eachId in originalIdList:
         outputIdList.append(toGroupId[eachId])
 
-    curr_df.user_id = outputIdList
+
+    curr_df = curr_df.assign(user_id=outputIdList)
     #================================================ Finished Modifying Original DF ========================================   
     return curr_df
 
@@ -355,9 +377,9 @@ def furtherFilter(num_rating,df_train, df_trainOrignal, df_test):
     
 # In[614]:
 
-def prpareTrainTestObj(df, batch_size, NOofBatches, cluster_size):
+def prpareTrainTestObj(df, batch_size, NOofBatches, cluster_size, method):
     print("Preparing training and testing datasets and objects ...")
-    df_train = createTrainDf_clustered(df, batch_size, NOofBatches, cluster_size)
+    df_train = createTrainDf_clustered(df, batch_size, NOofBatches, cluster_size, method)
     df_test  = createTestDf(df, batch_size, NOofBatches+1)
     df_trainOrignal = createTrainDf_unClustered(df, batch_size, NOofBatches) # the original rating matrix is not imputed at this point
     df_train = df_train[['user_id', 'bus_id', 'rating']]
@@ -391,7 +413,7 @@ def batchRun(model, trainSet, originalDic, testSet, num_of_centroids,
 
 
 def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
-             batch_size, num_of_centroids, factors, POIsims, maxEpochs = 40, 
+             batch_size, num_of_centroids, factors, POIsims, method, maxEpochs = 40, 
              Random = 6, mae = True, rmse = True):
     # if you need to see results, set mae or rmse to True
     # Randome is Random state 
@@ -417,7 +439,7 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
         busSimMat = None
     for XthBatch in range(1,totalNOB+1):
         print(f"=================Starting the {XthBatch}th batch=================")
-        trainSet, testSet, originalDic = prpareTrainTestObj(df, batch_size, XthBatch, cluster_size)
+        trainSet, testSet, originalDic = prpareTrainTestObj(df, batch_size, XthBatch, cluster_size, method)
         batchRun(model, trainSet, originalDic, testSet, num_of_centroids, factors, 
                  log, busSimMat, epochs = maxEpochs, random = Random, MAE = mae, RMSE = rmse )
     log.close

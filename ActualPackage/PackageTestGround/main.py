@@ -16,9 +16,10 @@ def main_vanilla():
     factors = 3
     num_of_centroids = 9
     POIsims = 0
+    method = 'kmean'
     functions.totalRun(model, fileName, startYear, min_NO_rating,
                        totalNOB, cluster_size, batch_size, num_of_centroids, 
-                       factors, POIsims)
+                       factors, POIsims, method)
 
 def main_POIsims():
     
@@ -32,9 +33,12 @@ def main_POIsims():
     factors = 3
     num_of_centroids = 9
     POIsims = 1
+    method = 'spectral'
     functions.totalRun(model, fileName, startYear, min_NO_rating, 
                        totalNOB, cluster_size, batch_size, num_of_centroids, 
-                       factors, POIsims)
+                       factors, POIsims, method)
+    
+
 
     
 #def main_
