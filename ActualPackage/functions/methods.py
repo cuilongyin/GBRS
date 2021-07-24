@@ -250,11 +250,9 @@ def cluster_spectral_part1(curr_df, Xth_batch, clusters_per_batch):
 def cluster_spectral_part2(curr_df, Xth_batch, clusters_per_batch):   
     #============================================== Finished Calculate Sims ==========================================
     fileName = "./PickleJar/" +str(Xth_batch) + "thSimMat.pkl"
-    #print(fileName)
     if (os.path.exists(fileName)):
         simMat = pd.read_pickle(fileName)
     else:
-        #print("FileDoesn'tExist...")
         simMat = cluster_spectral_part1(curr_df, Xth_batch, clusters_per_batch)    
     print(simMat)
     simArray = np.array(simMat)
