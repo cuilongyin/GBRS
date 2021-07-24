@@ -99,7 +99,7 @@ def creatingXthBatch_clustered(df, batch_size, Xth_batch, cluster_size, method):
     if method == 'kmean' :
         clustered = cluster_KMean_userRating(curr_df, Xth_batch, cluster_size)
     elif method == 'spectral' :
-        clustered = cluster_spectral(curr_df, Xth_batch, cluster_size)
+        clustered = cluster_spectral_part2(curr_df, Xth_batch, cluster_size)
     else:
         return curr_df
     return clustered
@@ -173,7 +173,7 @@ def cluster_KMean_userRating(df, Xth_batch, clusters_per_batch):
 
     return df
 
-def cluster_spectral(curr_df, Xth_batch, clusters_per_batch):
+def cluster_spectral_part1(curr_df, Xth_batch, clusters_per_batch):
 
     print(f"--- Performing {Xth_batch}th batch clustering (spectral) ---")
     global_mean = curr_df.loc[:,'rating'].mean()
@@ -189,8 +189,8 @@ def cluster_spectral(curr_df, Xth_batch, clusters_per_batch):
             if iid not in bi:
                 bi[iid] = dfMatrix.mean(axis = 0)[iid]
 
-            #if math.isnan(dfMatrix.at[uid,iid]):
-            if dfMatrix.at[uid,iid].isnan():
+            if math.isnan(dfMatrix.at[uid,iid]):
+            #if dfMatrix.at[uid,iid].isnan():
                 dfMatrix.at[uid,iid] = bu[uid] + bi[iid] - global_mean
 
     #======================= Finished Imputation =======================
@@ -243,8 +243,20 @@ def cluster_spectral(curr_df, Xth_batch, clusters_per_batch):
                                  'sim': combinedSims 
                            })
     simMat = simMat.pivot( index='user_id_R', columns = 'user_id_C', values = 'sim') 
-
+    fileName = "./PickleJar/" +str(Xth_batch) + "thSimMat.pkl"
+    simMat.to_pickle(fileName)
+    return simMat
+    
+def cluster_spectral_part2(curr_df, Xth_batch, clusters_per_batch):   
     #============================================== Finished Calculate Sims ==========================================
+    fileName = "./PickleJar/" +str(Xth_batch) + "thSimMat.pkl"
+    #print(fileName)
+    if (os.path.exists(fileName)):
+        simMat = pd.read_pickle(fileName)
+    else:
+        #print("FileDoesn'tExist...")
+        simMat = cluster_spectral_part1(curr_df, Xth_batch, clusters_per_batch)    
+    print(simMat)
     simArray = np.array(simMat)
     num_clusters = clusters_per_batch
     sc = SpectralClustering(num_clusters, affinity='precomputed')
@@ -257,7 +269,7 @@ def cluster_spectral(curr_df, Xth_batch, clusters_per_batch):
 
     toGroupId = defaultdict()
     for i in range(len(groupIDs)):
-        toGroupId[dfMatrix.index.values[i]] = groupIDs[i]
+        toGroupId[simMat.index.values[i]] = groupIDs[i]
 
     originalIdList = curr_df.user_id
     outputIdList   = []

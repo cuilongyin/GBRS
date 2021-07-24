@@ -142,6 +142,7 @@ result = generateBusSimMat(fileName)
 #matFilePath = os.path.dirname(os.path.realpath(__file__)) + "/simMat.csv"
 #busSimMat = readSimMat(matFilePath)
 #file = os.path.abspath(__file__+"/..")+ "/" + fileName
+writePath = os.path.dirname(os.path.realpath(__file__)) + "\\simMat.bin"
 with open(writePath, 'wb') as handle:
     pickle.dump(result, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
