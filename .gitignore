@@ -21,3 +21,40 @@ Results.csv
 test/NEUCOM-D-21-00686_R1_reviewer.pdf
 test/jre-8u291-windows-x64.exe
 CompleteRatingMatrix.csv
+PickleJar/1thSimMat.pkl
+PickleJar/2thSimMat.pkl
+PickleJar/3thSimMat.pkl
+PickleJar/4thSimMat.pkl
+PickleJar/5thSimMat.pkl
+PickleJar/6thSimMat.pkl
+PickleJar/7thSimMat.pkl
+PickleJar/8thSimMat.pkl
+PickleJar/9thSimMat.pkl
+PickleJar/10thSimMat.pkl
+PickleJar/11thSimMat.pkl
+PickleJar/12thSimMat.pkl
+PickleJar/13thSimMat.pkl
+PickleJar/14thSimMat.pkl
+PickleJar/15thSimMat.pkl
+PickleJar/16thSimMat.pkl
+PickleJar/17thSimMat.pkl
+PickleJar/18thSimMat.pkl
+PickleJar/19thSimMat.pkl
+PickleJar/20thSimMat.pkl
+PickleJar/21thSimMat.pkl
+PickleJar/22thSimMat.pkl
+PickleJar/23thSimMat.pkl
+PickleJar/24thSimMat.pkl
+PickleJar/25thSimMat.pkl
+PickleJar/26thSimMat.pkl
+PickleJar/27thSimMat.pkl
+PickleJar/28thSimMat.pkl
+PickleJar/29thSimMat.pkl
+PickleJar/30thSimMat.pkl
+PickleJar/31thSimMat.pkl
+PickleJar/32thSimMat.pkl
+PickleJar/33thSimMat.pkl
+Important Result/model_include_all_first_try.csv
+Important Result/model_only_combinedfSims.csv
+Important Result/model_only_POIsims.csv
+Important Result/model_original_noExtraFeature.csv
