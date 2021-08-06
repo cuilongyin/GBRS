@@ -36,6 +36,7 @@ class GBRS_vanilla(AlgoBase):
         self.simDic = defaultdict()
         self.num_predicted = 0      
         self.num_centroids = numCtds
+        
         AlgoBase.__init__(self)
 
     def fit(self, trainset):
@@ -139,10 +140,10 @@ class GBRS_vanilla(AlgoBase):
                 print(f"---|---imputed for {num_users} groups/centroids already ...")
             for item in list(self.trainset.all_items()):
                 if user in self.centroidRatingDic:
-                    self.centroidRatingDic[user].append(self.estimateCentroidRating(user,item))
+                    self.centroidRatingDic[user].append((item, self.estimateCentroidRating(user,item)))
                 else:
                     self.centroidRatingDic[user] = []
-                    self.centroidRatingDic[user].append(self.estimateCentroidRating(user,item))
+                    self.centroidRatingDic[user].append((item, self.estimateCentroidRating(user,item)))
         return self
     
     
@@ -154,43 +155,49 @@ class GBRS_vanilla(AlgoBase):
         return result
 
     
-    def findMostSimilars(self, currentVec):
+    def findMostSimilars(self, user):
         centroids = []
         sims  = []
-        # make the number of vectors to be a parameter.
-        for centroid in self.centroidRatingDic:
-            centroids.append(centroid)
-            sim = self.computeCosine(currentVec, self.centroidRatingDic[centroid])
+        #print(user)
+        userRatingVec = [ x[1] for x in self.originalDic[user]]
+        itemVec   = [ self.trainset.to_inner_iid(x[0]) for x in self.originalDic[user] ]
+
+        for eachGroup in list(self.trainset.all_users()):
+            groupRatingVec = []
+            groupItemRatingVec = self.centroidRatingDic[eachGroup]
+            for item_rating in groupItemRatingVec:
+                if item_rating[0] in itemVec:
+                    groupRatingVec.append(item_rating[1])
+            sim = self.computeCosine(userRatingVec, groupRatingVec)
             sims.append(sim)
+            centroids.append(eachGroup)
+        sorted_centroids = [ctd for sims, ctd in sorted(zip(sims, centroids),key=lambda pair: pair[0])]
+        sorted_sims      = [sims for sims, ctd in sorted(zip(sims, centroids),key=lambda pair: pair[0])]
+        return sorted_centroids[:self.num_centroids], sorted_sims[:self.num_centroids]
         
-        #mostSimilarCentroid = centroids[sims.index(max(sims))]
-        #sort centroids based on sims:
-        sorted_centroids = [ctd for sims, ctd \
-                            in sorted(zip(sims, centroids),key=lambda pair: pair[0])]
-        
-        
-        return sorted_centroids[:self.num_centroids]
     
     def computeSimMatrix(self): # for each group, 
         print("Strat calculating sim ....") 
         original_dic_complete = self.originalDic  
-        print("---Strat calcculating centroids rating matrix ....")
+        #print("---Strat calcculating centroids rating matrix ....")
         self.imputeCentroidRatingMat()
-        print("---Done")
+        #print("---Done")
         n = 0
         # when finding the most similar centroids, search for several centroids 
         # instead of one, try 2, 3,  ... 10 
         for originalUser in original_dic_complete:
-            user_vec = original_dic_complete[originalUser]
-            centroidsVec = self.findMostSimilars(user_vec)
-            self.simDic[originalUser] = centroidsVec
+            #user_vec = original_dic_complete[originalUser]
+            centroidsVec, correspondingSims = self.findMostSimilars(originalUser)
+            self.simDic[originalUser] = (centroidsVec, correspondingSims)
+            #print(centroidsVec)
             n += 1
             if n%100 == 0:
                 print(f"simDic is calculating, {n} users in original are updated...")
         print("Done sim calculating ....")
-        return self           
+        return self          
     
-    def estimate(self, u,i):
+    def estimate(self, u, i):
+        #print(f"user {u}, item {i}")
         self.num_predicted += 1
         
         u = u.split('UKN__')[1] #surprise will ad UKN__ infront of every user index since 
@@ -199,19 +206,28 @@ class GBRS_vanilla(AlgoBase):
             self.computeSimMatrix()
             self.simComputed = True
 
-        rankedCtd = self.simDic[u]
+        (rankedCtd, correspondingSims) = self.simDic[u]
         
-        #if isinstance(i, str):
-            #return self.trainset.global_mean
-        #ratingVec = np.array(self.centroidRatingDic[rankedCtd[0]])
         vecList = []
         for eachCtd in rankedCtd:
-            vecList.append(np.array(self.centroidRatingDic[eachCtd]))
+            vecList.append(np.array([x[1] for x in self.centroidRatingDic[eachCtd]]))
         #===============================================================
-        rating_vec = sum(vecList)/len(vecList)
+        SUM = 0 * vecList[0]
+
+        for index in range(len(correspondingSims)):
+            SUM = SUM + correspondingSims[index] * vecList[index]
+
+        rating_vec = SUM/sum(correspondingSims)
+
+        groupRatings = []
+        for index in range(len(vecList)):
+            groupRatings .append(vecList[index][i])
         #===============================================================
         #change to weighted average might be better, try change this part.
         if self.num_predicted%100 == 0:
             print(f"Have finisehd predicting {self.num_predicted} ratings..." )
+        print( f" user: {u} item: { self.trainset.to_raw_iid(i)}  est = {rating_vec[i]}  all the group ratings are {groupRatings} ")
+        print('----------')
         return rating_vec[i]
+       
 
