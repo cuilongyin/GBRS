@@ -581,8 +581,8 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size, 
 fileName = "UC.csv"
 startYear = 2007
 min_NO_rating = 4      # 3: 22785 lines
-batch_size = 594     
-cluster_size = 1      #clusters per batch
+batch_size = 900     
+cluster_size = 10      #clusters per batch
 totalNOB = 33           #number of Batch, not including the test batch
 factors = 3
 model = myModel
