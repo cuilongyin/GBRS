@@ -12,13 +12,19 @@ from surprise import PredictionImpossible
 # In[595]:
 class GBRS_POIsims(AlgoBase):
 
-    def __init__(self, n_factors=100, n_epochs=20, biased=True, init_mean=0,
+    def __init__(self, busSimMat, n_factors=100, n_epochs=20, biased=True, init_mean=0,
                  init_std_dev=.1, lr_all=.005,
-                 reg_all=.02, lr_bu=None, lr_bi=None, lr_pu=None, lr_qi=None,
-                 reg_bu=None, reg_bi=None, reg_pu=None, reg_qi=None, reg_qj=None,
+                 reg_all=.02, lr_bu=None, lr_bi=None, lr_pu=None,
+                 lr_qi=None,
+                 reg_bu=None, reg_bi=None, reg_pu=None, 
+                 reg_qi=None,
+                 reg_qj=None,
                  random_state=None, verbose=False, originalDic=None,
-                 numCtds = None, busSimMat = None):
-
+                 numCtds = None):
+                # modify reg_qi 
+                # modify reg_qj
+                # modify lr_qi
+                # they were all None, remember this.
         self.n_factors = n_factors
         self.n_epochs = n_epochs
         self.biased = biased
@@ -52,7 +58,7 @@ class GBRS_POIsims(AlgoBase):
         return self
 
     def sgd(self, trainset):
-        print("Strat sgd ...")
+        print("Start sgd .... ")
         rng = get_rng(self.random_state)
         bu = np.zeros(trainset.n_users, np.double)
         bi = np.zeros(trainset.n_items, np.double)
@@ -65,28 +71,32 @@ class GBRS_POIsims(AlgoBase):
         if not self.biased:
             global_mean = 0
 
+       
         for current_epoch in range(self.n_epochs):
-            n = 0
+
+            #errors = 0
+            
             if self.verbose:
                 print("Processing epoch {}".format(current_epoch))
-            for u, i, r in trainset.all_ratings():
-
+            for u, i, r in trainset.all_ratings():    
                 # compute current error
                 dot = 0  # <q_i, p_u>
                 for f in range(self.n_factors):
                     dot += qi[i, f] * pu[u, f]
                 err = r - (global_mean + bu[u] + bi[i] + dot)
-
+                #errors += abs(err)
                 # update biases
                 if self.biased:
                     bu[u] += self.lr_bu * (err - self.reg_bu * bu[u])
                     bi[i] += self.lr_bi * (err - self.reg_bi * bi[i])
 
-                # fine i's neighbors
+                # find i's neighbors
                 i_raw = trainset.to_raw_iid(i)
                 i_j_simList = self.find_neighbors(i_raw)
+
                 jList = [trainset.to_inner_iid(each[0]) for each in i_j_simList]
                 simList = [each[1] for each in i_j_simList]
+                #print(jList[:6])
 
                 # update factors
                 for f in range(self.n_factors):
@@ -99,7 +109,8 @@ class GBRS_POIsims(AlgoBase):
                     #qi[i, f] += self.lr_qi * (err * puf - self.reg_qi * qif)
                     qi[i,f] += self.lr_qi * (err * puf - (self.reg_qi + self.reg_qj * sum(simList)) * qif + self.reg_qj * np.dot(simList, qjfs) )
                                                           
-                n += 1
+            #errors /= trainset.n_ratings
+            #print(f"current error is {errors} ...")
         self.bu = bu
         self.bi = bi
         self.pu = pu
@@ -152,10 +163,10 @@ class GBRS_POIsims(AlgoBase):
                 print(f"---|---imputed for {num_users} groups/centroids already ...")
             for item in list(self.trainset.all_items()):
                 if user in self.centroidRatingDic:
-                    self.centroidRatingDic[user].append(self.estimateCentroidRating(user,item))
+                    self.centroidRatingDic[user].append((item, self.estimateCentroidRating(user,item)))
                 else:
                     self.centroidRatingDic[user] = []
-                    self.centroidRatingDic[user].append(self.estimateCentroidRating(user,item))
+                    self.centroidRatingDic[user].append((item, self.estimateCentroidRating(user,item)))
         return self
     
     
@@ -167,36 +178,40 @@ class GBRS_POIsims(AlgoBase):
         return result
 
     
-    def findMostSimilars(self, currentVec):
+    def findMostSimilars(self, user):
         centroids = []
         sims  = []
-        # make the number of vectors to be a parameter.
-        for centroid in self.centroidRatingDic:
-            centroids.append(centroid)
-            sim = self.computeCosine(currentVec, self.centroidRatingDic[centroid])
+                        #(item, rating)
+        userRatingVec = [ x[1] for x in self.originalDic[user]]
+        itemVec   = [ self.trainset.to_inner_iid(x[0]) for x in self.originalDic[user] ]
+
+        for eachGroup in list(self.trainset.all_users()):
+            groupRatingVec = []
+            groupItemRatingVec = self.centroidRatingDic[eachGroup] # [list of ratings] --> [list of (item, rating)]
+            for item_rating in groupItemRatingVec:
+                if item_rating[0] in itemVec:
+                    groupRatingVec.append(item_rating[1])
+            sim = self.computeCosine(userRatingVec, groupRatingVec)
             sims.append(sim)
-        
-        #mostSimilarCentroid = centroids[sims.index(max(sims))]
-        #sort centroids based on sims:
-        sorted_centroids = [ctd for sims, ctd \
-                            in sorted(zip(sims, centroids),key=lambda pair: pair[0])]
-        
-        
-        return sorted_centroids[:self.num_centroids]
+            centroids.append(eachGroup)
+        sorted_centroids = [ctd for sims, ctd in sorted(zip(sims, centroids),key=lambda pair: pair[0])]
+        sorted_sims      = [sims for sims, ctd in sorted(zip(sims, centroids),key=lambda pair: pair[0])] # debug here
+        return sorted_centroids[:self.num_centroids], sorted_sims[:self.num_centroids]
     
     def computeSimMatrix(self): # for each group, 
         print("Strat calculating sim ....") 
         original_dic_complete = self.originalDic  
-        print("---Strat calcculating centroids rating matrix ....")
+        #print("---Strat calcculating centroids rating matrix ....")
         self.imputeCentroidRatingMat()
-        print("---Done")
+        #print("---Done")
         n = 0
         # when finding the most similar centroids, search for several centroids 
         # instead of one, try 2, 3,  ... 10 
         for originalUser in original_dic_complete:
-            user_vec = original_dic_complete[originalUser]
-            centroidsVec = self.findMostSimilars(user_vec)
-            self.simDic[originalUser] = centroidsVec
+            #user_vec = original_dic_complete[originalUser]
+            centroidsVec, correspondingSims = self.findMostSimilars(originalUser)
+            self.simDic[originalUser] = (centroidsVec, correspondingSims)
+            #print(centroidsVec)
             n += 1
             if n%100 == 0:
                 print(f"simDic is calculating, {n} users in original are updated...")
@@ -204,20 +219,24 @@ class GBRS_POIsims(AlgoBase):
         return self 
 
     def find_neighbors(self, raw_iid, n_neighbors = 6):
-
         if raw_iid in self.busSimMat:
-            allPOIs = self.busSimMat[raw_iid] # this is also a defaultdict
+            allPOIs = self.busSimMat[raw_iid] # this is also a defaultdic
         else:
             allPOIs = []
         POI_sim_list = []
         for eachPOI in allPOIs:
-            eachSim = allPOIs[eachPOI]
-            POI_sim_list.append((eachPOI,eachSim))
+            if eachPOI in self.trainset._raw2inner_id_items:
+                eachSim = allPOIs[eachPOI]
+                POI_sim_list.append((eachPOI,eachSim))
         rankedPOIs = sorted(POI_sim_list, key=lambda tup: tup[1], reverse=True)
-        rankedPOIs = rankedPOIs[:n_neighbors]
+        rankedPOIs = rankedPOIs[1:n_neighbors+1]
+        #_raw2inner_id_items
+        #print(raw_iid)
+        #print(rankedPOIs)
         return rankedPOIs
         
-    def estimate(self, u,i):
+    def estimate(self, u, i):
+        #print(f"user {u}, item {i}")
         self.num_predicted += 1
         
         u = u.split('UKN__')[1] #surprise will ad UKN__ infront of every user index since 
@@ -226,19 +245,27 @@ class GBRS_POIsims(AlgoBase):
             self.computeSimMatrix()
             self.simComputed = True
 
-        rankedCtd = self.simDic[u]
+        (rankedCtd, correspondingSims) = self.simDic[u]
         
-        #if isinstance(i, str):
-            #return self.trainset.global_mean
-        #ratingVec = np.array(self.centroidRatingDic[rankedCtd[0]])
         vecList = []
         for eachCtd in rankedCtd:
-            vecList.append(np.array(self.centroidRatingDic[eachCtd]))
+            vecList.append(np.array([x[1] for x in self.centroidRatingDic[eachCtd]]))
         #===============================================================
-        rating_vec = sum(vecList)/len(vecList)
+        SUM = 0 * vecList[0]
+
+        for index in range(len(correspondingSims)):
+            SUM = SUM + correspondingSims[index] * vecList[index]
+
+        rating_vec = SUM/sum(correspondingSims)
+        
+        groupRatings = []
+        for index in range(len(vecList)):
+            groupRatings .append(vecList[index][i])
         #===============================================================
         #change to weighted average might be better, try change this part.
         if self.num_predicted%100 == 0:
             print(f"Have finisehd predicting {self.num_predicted} ratings..." )
+        print( f" user: {u} item: { self.trainset.to_raw_iid(i)}  est = {rating_vec[i]}  all the group ratings are {groupRatings} ")
         return rating_vec[i]
+        #return sum(rating_vec)/len(rating_vec)
 
