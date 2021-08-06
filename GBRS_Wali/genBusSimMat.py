@@ -48,9 +48,11 @@ def genFourDics(fileName):# this applies to windows, if you are using a linex or
 
 def computeCosine(vec1,vec2):
     return dot(vec1, vec2)/(norm(vec1)*norm(vec2))
+
 def toFloat(aStringSeries):
     aFloatList = []
     if not isinstance(aStringSeries, str):
+        aStringList = aStringSeries
         aStringList = aStringSeries[0][1:-1].split(',')
     else:
         aStringList = aStringSeries[1:-1].split(',')
@@ -58,8 +60,8 @@ def toFloat(aStringSeries):
         aFloatList.append(float(each))
     return aFloatList
 
-def generateBusSimMat(fileName):
 
+def originalGenFunc(fileName):
     df = createPandasDataFrame(fileName)
     result = defaultdict()
     for bus in df["bus_id"]:
@@ -70,7 +72,26 @@ def generateBusSimMat(fileName):
             vec = toFloat(vec)
             sims.append(computeCosine(currVec, vec))
         result[bus]=sims
-        
+    return result
+
+def generateBusSimMat(fileName):
+
+    df = createPandasDataFrame(fileName)
+
+    result = defaultdict()
+    for _, row1 in df.iterrows():
+        currBus = row1.bus_id
+        result[currBus] = defaultdict()
+        currVec = row1.vector
+        currVec = toFloat(currVec)
+
+        for _, row2 in df.iterrows(): 
+            targVec = row2.vector
+            targVec = toFloat(targVec)
+            sim = computeCosine(currVec, targVec)
+            targBus = row2.bus_id
+            result[currBus][targBus] = sim
+
     return result
 
 def writeToFile(result, writePath):
@@ -142,11 +163,16 @@ result = generateBusSimMat(fileName)
 #matFilePath = os.path.dirname(os.path.realpath(__file__)) + "/simMat.csv"
 #busSimMat = readSimMat(matFilePath)
 #file = os.path.abspath(__file__+"/..")+ "/" + fileName
+#print(#result)
 writePath = os.path.dirname(os.path.realpath(__file__)) + "\\simMat.bin"
 with open(writePath, 'wb') as handle:
     pickle.dump(result, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
+with open(writePath, 'rb') as handle:
+    busSimMat = pickle.load(handle)
+print(busSimMat)
+print(result == busSimMat)
 #cProfile.run('generateBusSimMat(fileName)')
 #print(len(result)) 
 #for x in result:
