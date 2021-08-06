@@ -254,7 +254,7 @@ def cluster_spectral_part2(curr_df, Xth_batch, clusters_per_batch):
         simMat = pd.read_pickle(fileName)
     else:
         simMat = cluster_spectral_part1(curr_df, Xth_batch, clusters_per_batch)    
-    print(simMat)
+    #print(simMat)
     simArray = np.array(simMat)
     num_clusters = clusters_per_batch
     sc = SpectralClustering(num_clusters, affinity='precomputed')
@@ -306,6 +306,7 @@ def readDataFrame(df_train, df_test, df_trainOrignal): # to generate train/test 
 
 def train(model, trainSet, factors, epochs, random , originalDic, num_of_centroids, busSimMat):
     print("Start training ...")
+    
     if busSimMat != None:
         Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, originalDic = originalDic,
                            numCtds = num_of_centroids, busSimMat = busSimMat, verbose = False)
@@ -324,6 +325,8 @@ def test(trainedModel, testSet,log, mae = 1, rmse = 1):
     print("Start testing ...")
     predictions = trainedModel.test(testSet)
     if rmse == 1:
+        for x in predictions:
+            print(x)
         acc_rmse = accuracy.rmse(predictions, verbose=True)
         log.write(str(acc_rmse) + ',' )
     if mae == 1:
@@ -347,10 +350,10 @@ def originalTrainListToDic(originalTrainList):
     originalDic = defaultdict()      
     for u,i,r in originalTrainList:
         if u in originalDic:
-            originalDic[u].append(r)  
+            originalDic[u].append((i,r))  
         else:
             originalDic[u] = []
-            originalDic[u].append(r)             
+            originalDic[u].append((i,r))             
     return originalDic    
 
 
@@ -402,7 +405,7 @@ def prpareTrainTestObj(df, batch_size, NOofBatches, cluster_size, method):
         raise Exception("One of the dataframe is too small, check the test df first.")
     
     df_train, df_trainOrignal, df_test  = furtherFilter(4,df_train, df_trainOrignal, df_test)
-    df_trainOrignal = columnImpute(df_trainOrignal)
+    #df_trainOrignal = columnImpute(df_trainOrignal)
  
     trainSet, testSet, originalTrainSet = readDataFrame(df_train,df_test,df_trainOrignal)
     OriginalDic = originalTrainListToDic(originalTrainSet)
@@ -415,7 +418,7 @@ def prpareTrainTestObj(df, batch_size, NOofBatches, cluster_size, method):
 def batchRun(model, trainSet, originalDic, testSet, num_of_centroids,
              factors, log, busSimMat, epochs = 40, random = 6, MAE = 1, RMSE = 1 ):
 
-    trainedModel = train(model, trainSet, factors, epochs, random, originalDic, num_of_centroids, busSimMat)
+    trainedModel = train(model, trainSet, factors, epochs, random, originalDic, num_of_centroids, busSimMat = busSimMat)
     test(trainedModel, testSet, log, mae = MAE, rmse = RMSE)
 
 
@@ -442,10 +445,12 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
     log.write('RMSE, MAE\n')
     df = prepareDf(fileName, startYear, min_NO_rating)
     if POIsims == True:
-        matFilePath = os.path.abspath(__file__+"/../../PackageTestGround" + "/POIsims.bin") 
+        matFilePath = os.path.abspath(__file__+"/../../PackageTestGround" + "/simMat.bin") 
         with open(matFilePath, 'rb') as handle:
             busSimMat = pickle.load(handle)
+
     else:
+        print("NO SIM FILES#####################################################################")
         busSimMat = None
     for XthBatch in range(1,totalNOB+1):
         print(f"=================Starting the {XthBatch}th batch=================")
