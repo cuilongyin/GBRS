@@ -431,16 +431,16 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
     # if you need to see results, set mae or rmse to True
     # Randome is Random state 
     if platform.system() == 'Windows':
-        filePrefix  = os.path.dirname(os.path.realpath(__file__)) + "\\" 
+        filePrefix  = os.path.dirname(os.path.realpath(__file__)) + "\\..\\resultDumpster\\" 
     else:
         filePrefix  = os.path.dirname(os.path.realpath(__file__)) + "/../PackageTestGround/Result/" 
         
-    output = filePrefix + 'GBRS' + '_startYear_'    + str(startYear)\
-                                 + '_minRatings_'   + str(min_NO_rating)\
-                                 + '_NOB_'          + str(totalNOB)\
-                                 + '_clusterSize_'  + str(cluster_size)\
-                                 + '_num_of_centroids_'  + str(num_of_centroids)\
-                                 + '.txt'
+    output = filePrefix + 'GBRS' + '-sYear('    + str(startYear) +')'\
+                                 + '-NOB('      + str(totalNOB)  +')'\
+                                 + '-cSize('    + str(cluster_size) +')'\
+                                 + '-NOC('      + str(num_of_centroids) +')'\
+                                 + '.csv'
+
     log = open(output, 'w')
     log.write('RMSE, MAE\n')
     df = prepareDf(fileName, startYear, min_NO_rating)
@@ -450,9 +450,9 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
             busSimMat = pickle.load(handle)
 
     else:
-        print("NO SIM FILES#####################################################################")
+        print("NO SIM FILES !!!")
         busSimMat = None
-    for XthBatch in range(1,totalNOB+1):
+    for XthBatch in range(33, totalNOB+1):
         print(f"=================Starting the {XthBatch}th batch=================")
         trainSet, testSet, originalDic = prpareTrainTestObj(df, batch_size, XthBatch, cluster_size, method)
         batchRun(model, trainSet, originalDic, testSet, num_of_centroids, factors, 
