@@ -10,11 +10,11 @@ def main_vanilla():
     fileName = "UC.csv"
     startYear = 2007
     min_NO_rating = 9999999999   # total is 576065, filtering is too slow because of the matrix being too large.
-    batch_size = 900    
-    cluster_size = 6      #clusters per batch
+    batch_size = 1000    
+    cluster_size = 3      #clusters per batch
     totalNOB = 33           #number of Batch, not including the test batch
     factors = 3
-    num_of_centroids = 6
+    num_of_centroids = 10
     POIsims = 0
     method = 'kmean'
     functions.totalRun(model, fileName, startYear, min_NO_rating,
@@ -43,8 +43,8 @@ def main_POIsims():
     
 #def main_
 if __name__ == "__main__":
-    #main_vanilla()
-    main_POIsims()
+    main_vanilla()
+    #main_POIsims()
 
 
 #  GBRS, GBRS + review
