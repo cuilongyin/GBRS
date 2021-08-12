@@ -15,7 +15,7 @@ def main_vanilla():
     totalNOB = 33           #number of Batch, not including the test batch
     factors = 3
     num_of_centroids = 30
-    POIsims = 0
+    POIsims = 1
     method = 'kmean'
     functions.totalRun(model, fileName, startYear, min_NO_rating,
                        totalNOB, cluster_size, batch_size, num_of_centroids, 

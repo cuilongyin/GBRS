@@ -456,7 +456,7 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
     log.write('RMSE, MAE\n')
     df = prepareDf(fileName, startYear, min_NO_rating)
     if POIsims == True:
-        matFilePath = os.path.abspath(__file__+"/../../PackageTestGround" + "/simMat.bin") 
+        matFilePath = os.path.abspath(__file__+"/../../PackageTestGround" + "/simMat_new.bin") 
         with open(matFilePath, 'rb') as handle:
             busSimMat = pickle.load(handle)
 
