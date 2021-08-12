@@ -247,7 +247,7 @@ class GBRS_vanilla(AlgoBase):
                 resultWeight[2] += 1
             elif self.centroidRatingDic[eachCtd][i][1] < 3.3:
                 resultWeight[3] += 1
-            elif self.centroidRatingDic[eachCtd][i][1] < 4.7:
+            elif self.centroidRatingDic[eachCtd][i][1] < 4.6:
                 resultWeight[4] += 1
             else:
                 resultWeight[5] += 1
