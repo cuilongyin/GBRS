@@ -1,4 +1,5 @@
 import os
+import csv
 import math
 import pickle
 import platform
@@ -122,7 +123,6 @@ def creatingXthBatch_unClustered(df, batch_size, Xth_batch): #1 based, Do not pu
 
 
 def createTrainDf_clustered(df, batch_size, NOofBatches, cluster_size, method):
-    trainList = []
     trainList = []
     startFrom = 1
     #if NOofBatches - 4 < 1:
@@ -284,7 +284,16 @@ def cluster_spectral_part2(curr_df, Xth_batch, clusters_per_batch):
 
 def createTestDf(df, batch_size, XthBatch):
 
-    testSet = creatingXthBatch_unClustered(df, batch_size, XthBatch)
+    #testSet = creatingXthBatch_unClustered(df, batch_size, XthBatch)
+
+
+    testList = []
+
+    for i in range(XthBatch, XthBatch+6): # currently training vs test = 24 : 6
+        testList.append(creatingXthBatch_unClustered(df, batch_size, i))
+    testSet = pd.concat(testList)   
+    testSet = testSet.reset_index(drop=True)
+    #testSet.to_csv()
     return testSet 
 
 
@@ -325,8 +334,9 @@ def test(trainedModel, testSet,log, mae = 1, rmse = 1):
     print("Start testing ...")
     predictions = trainedModel.test(testSet)
     if rmse == 1:
-        for x in predictions:
-            print(x)
+        with open(os.path.abspath(__file__+"/../../")+ "\\resultDumpster\\" + 'predictions.csv', 'w', newline='') as myfile:
+            wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
+            wr.writerow(predictions)
         acc_rmse = accuracy.rmse(predictions, verbose=True)
         log.write(str(acc_rmse) + ',' )
     if mae == 1:
@@ -395,6 +405,7 @@ def prpareTrainTestObj(df, batch_size, NOofBatches, cluster_size, method):
     df_train = createTrainDf_clustered(df, batch_size, NOofBatches, cluster_size, method)
     df_test  = createTestDf(df, batch_size, NOofBatches+1)
     df_trainOrignal = createTrainDf_unClustered(df, batch_size, NOofBatches) # the original rating matrix is not imputed at this point
+    
     df_train = df_train[['user_id', 'bus_id', 'rating']]
     df_test  = df_test[['user_id', 'bus_id', 'rating']]
     df_trainOrignal = df_trainOrignal[['user_id', 'bus_id', 'rating']]
@@ -452,7 +463,8 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
     else:
         print("NO SIM FILES !!!")
         busSimMat = None
-    for XthBatch in range(33, totalNOB+1):
+    
+    for XthBatch in range(24, 25):
         print(f"=================Starting the {XthBatch}th batch=================")
         trainSet, testSet, originalDic = prpareTrainTestObj(df, batch_size, XthBatch, cluster_size, method)
         batchRun(model, trainSet, originalDic, testSet, num_of_centroids, factors, 
