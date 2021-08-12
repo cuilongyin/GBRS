@@ -5,6 +5,7 @@ from surprise.utils import get_rng
 from surprise import PredictionImpossible
 from collections import defaultdict
 from numpy import dot
+import operator
 from numpy.linalg import norm
 class GBRS_vanilla(AlgoBase):
     
@@ -212,32 +213,58 @@ class GBRS_vanilla(AlgoBase):
 
         (rankedCtd, correspondingSims) = self.simDic[u]
         
-        vecList = []
-        for eachCtd in rankedCtd:
-            vecList.append(np.array([x[1] for x in self.centroidRatingDic[eachCtd]]))
-        #===============================================================
-        SUM = 0 * vecList[0]
+        #vecList = []
+        #for eachCtd in rankedCtd:
+            #vecList.append(np.array([x[1] for x in self.centroidRatingDic[eachCtd]]))
+        #============================method 1==============================
+        #SUM = 0 * vecList[0]
 
-        for index in range(len(correspondingSims)):
+        #for index in range(len(correspondingSims)):
             #if correspondingSims[index] > 0.9:
-                SUM = SUM + correspondingSims[index] * vecList[index]
+            #SUM = SUM + correspondingSims[index] * vecList[index]
         
-        rating_vec = SUM/sum(correspondingSims)
+        #rating_vec = SUM/sum(correspondingSims)
 
-        groupRatings = []
-        for index in range(len(vecList)):
-            groupRatings .append(vecList[index][i])
-        
-       
-        #===============================================================
+        #groupRatings = []
+        #for index in range(len(vecList)):
+            #groupRatings .append(vecList[index][i])
+        #RMSE: 1.3251
+        #MAE:  1.0551            
+        #=============================method 2=========================
+        rList = [] # the ratings from all the same item
+        #for eachCtd in rankedCtd:
+            #rList.append(self.centroidRatingDic[eachCtd][i][1])
+        #result = np.dot(rList, correspondingSims)/sum(correspondingSims)
+        #RMSE: 1.3247
+        #MAE:  1.0560
+        #==============================method 3==========================
+        resultWeight = {1:0, 2:0, 3:0, 4:0, 5:0}
+        for eachCtd in rankedCtd:
+            rList.append(self.centroidRatingDic[eachCtd][i][1])
+            if self.centroidRatingDic[eachCtd][i][1] < 1.8:
+                resultWeight[1] += 1
+            elif self.centroidRatingDic[eachCtd][i][1] < 2.4:
+                resultWeight[2] += 1
+            elif self.centroidRatingDic[eachCtd][i][1] < 3.1:
+                resultWeight[3] += 1
+            elif self.centroidRatingDic[eachCtd][i][1] < 4.0:
+                resultWeight[4] += 1
+            else:
+                resultWeight[5] += 1
+        result = max(resultWeight.items(), key=operator.itemgetter(1))[0]
+
+         #==============================method 3==========================
         #change to weighted average might be better, try change this part.
         if self.num_predicted%100 == 0:
             print(f"Have finisehd predicting {self.num_predicted} ratings..." )
         #print( f" user: {u} item: { self.trainset.to_raw_iid(i)}  est = {rating_vec[i]})" )
         #print( f" Gratings = {groupRatings} ")
         #print( f" sims = {correspondingSims} ")
-        #print('----------')
+        print(rList)
+        print(resultWeight)
+        print('----------')
         #return rating_vec[i]
-        return 3
+        return result
+       
        
 
