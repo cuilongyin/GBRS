@@ -16,7 +16,7 @@ def aggregateVectors(df):
 
     df  = df.reset_index()
     df['vector'] = df['vector'].replace('\n','', regex=True)
-
+    print(df['vector'])
     total = df['length'].sum()       # total divider
     vectors = iter(df['vector'])     # make it iterable
     aggregatedRow = df['vector'][0]  # place holder for the aggrated vectors
@@ -45,6 +45,7 @@ def aggregateVectors(df):
 
 fileName = 'Urbana_Champaign_Vectors.csv'
 df = createPandasDataFrame(fileName)
+print(df)
 busList = list(set(list(df['bus_id'])))
 
 vecList = []
