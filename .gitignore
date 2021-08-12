@@ -80,3 +80,6 @@ GBRS_Wali/D2V.model.docvecs.vectors_docs.npy
 GBRS_Wali/__pycache__/callback.cpython-38.pyc
 GBRS_Wali/processedFile.csv
 GBRS_Wali/test.csv
+ActualPackage/models/__pycache__/vanilla.cpython-38.pyc
+ActualPackage/models/__pycache__/vanilla.cpython-38.pyc
+ActualPackage/resultDumpster/predictions.csv
