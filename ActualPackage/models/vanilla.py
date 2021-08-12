@@ -247,7 +247,7 @@ class GBRS_vanilla(AlgoBase):
                 resultWeight[2] += 1
             elif self.centroidRatingDic[eachCtd][i][1] < 3.3:
                 resultWeight[3] += 1
-            elif self.centroidRatingDic[eachCtd][i][1] < 4.5:
+            elif self.centroidRatingDic[eachCtd][i][1] < 4.7:
                 resultWeight[4] += 1
             else:
                 resultWeight[5] += 1
@@ -260,9 +260,9 @@ class GBRS_vanilla(AlgoBase):
         #print( f" user: {u} item: { self.trainset.to_raw_iid(i)}  est = {rating_vec[i]})" )
         #print( f" Gratings = {groupRatings} ")
         #print( f" sims = {correspondingSims} ")
-        print(rList)
-        print(resultWeight)
-        print('----------')
+        #print(rList)
+        #print(resultWeight)
+        #print('----------')
         #return rating_vec[i]
         return result
        
