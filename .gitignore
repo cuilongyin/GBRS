@@ -94,3 +94,6 @@ ActualPackage/models/__pycache__/vanilla.cpython-38.pyc
 *.csv
 *.csv
 *.pyc
+GBRS_Wali/simMat_new.bin
+ActualPackage/PackageTestGround/simMat.bin
+ActualPackage/PackageTestGround/POIsims.bin
