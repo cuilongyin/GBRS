@@ -97,3 +97,5 @@ ActualPackage/models/__pycache__/vanilla.cpython-38.pyc
 GBRS_Wali/simMat_new.bin
 ActualPackage/PackageTestGround/simMat.bin
 ActualPackage/PackageTestGround/POIsims.bin
+*.pyc
+ActualPackage/models/__pycache__/vanilla.cpython-38.pyc
