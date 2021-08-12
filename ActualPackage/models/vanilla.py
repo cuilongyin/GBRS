@@ -14,7 +14,7 @@ class GBRS_vanilla(AlgoBase):
                  reg_all=.02, lr_bu=None, lr_bi=None, lr_pu=None, lr_qi=None,
                  reg_bu=None, reg_bi=None, reg_pu=None, reg_qi=None,
                  random_state=None, verbose=False, originalDic=None,
-                 numCtds = None):
+                 numCtds = None, busSimMat = None):
 
         self.n_factors = n_factors
         self.n_epochs = n_epochs
@@ -37,6 +37,7 @@ class GBRS_vanilla(AlgoBase):
         self.simDic = defaultdict()
         self.num_predicted = 0      
         self.num_centroids = numCtds
+        self.busSimMat = busSimMat
         
         AlgoBase.__init__(self)
 
@@ -123,14 +124,15 @@ class GBRS_vanilla(AlgoBase):
     def estimateCentroidRating(self, u, i ):
         #ratings is a list containing all ratings from one group
         #[(item,rating),(item,rating),(item,rating),(item,rating) ...]
-        ratings =  self.trainset.ur[u]
-        filtered = filter(lambda x : x[0] == i, ratings)
-        target = list(filtered)
+        #ratings =  self.trainset.ur[u]
+        #filtered = filter(lambda x : x[0] == i, ratings)
+        #target = list(filtered)
     
-        if len(target) == 0: # if the rating is there, return it, or impute it.
-            return self.impute_train(u, i)
-        else:
-            return target[0][1]
+        #if len(target) == 0: # if the rating is there, return it, or impute it.
+            #return self.impute_train(u, i)
+        #else:
+            #return target[0][1]
+        return self.impute_train(u, i)  
         
 
     def imputeCentroidRatingMat(self):    # complete the centroids'rating matrix
@@ -232,26 +234,28 @@ class GBRS_vanilla(AlgoBase):
         #MAE:  1.0551            
         #=============================method 2=========================
         rList = [] # the ratings from all the same item
-        #for eachCtd in rankedCtd:
-            #rList.append(self.centroidRatingDic[eachCtd][i][1])
-        #result = np.dot(rList, correspondingSims)/sum(correspondingSims)
-        #RMSE: 1.3247
-        #MAE:  1.0560
-        #==============================method 3==========================
-        resultWeight = {1:0, 2:0, 3:0, 4:0, 5:0}
         for eachCtd in rankedCtd:
             rList.append(self.centroidRatingDic[eachCtd][i][1])
-            if self.centroidRatingDic[eachCtd][i][1] < 1.6:
-                resultWeight[1] += 1
-            elif self.centroidRatingDic[eachCtd][i][1] < 2.3:
-                resultWeight[2] += 1
-            elif self.centroidRatingDic[eachCtd][i][1] < 3.3:
-                resultWeight[3] += 1
-            elif self.centroidRatingDic[eachCtd][i][1] < 4.8: #1.38
-                resultWeight[4] += 1
-            else:
-                resultWeight[5] += 1
-        result = max(resultWeight.items(), key=operator.itemgetter(1))[0]
+        result = np.dot(rList, correspondingSims)/sum(correspondingSims)
+        #RMSE: 1.3247
+        #MAE:  1.0560 with original rating
+        #RMSE: 1.3199
+        #MAE:  1.0484 without original rating
+        #==============================method 3==========================
+        #resultWeight = {1:0, 2:0, 3:0, 4:0, 5:0}
+        #for eachCtd in rankedCtd:
+            #rList.append(self.centroidRatingDic[eachCtd][i][1])
+            #if self.centroidRatingDic[eachCtd][i][1] < 1.5:
+                #resultWeight[1] += 1
+            #elif self.centroidRatingDic[eachCtd][i][1] < 2.5:
+                #resultWeight[2] += 1
+            #elif self.centroidRatingDic[eachCtd][i][1] < 3.5: #1.3635
+                #resultWeight[3] += 1
+            #elif self.centroidRatingDic[eachCtd][i][1] < 4.5: #1.38
+                #resultWeight[4] += 1
+            #else:
+                #resultWeight[5] += 1
+        #result = max(resultWeight.items(), key=operator.itemgetter(1))[0]
 
          #==============================method 3==========================
         #change to weighted average might be better, try change this part.
