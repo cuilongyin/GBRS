@@ -83,3 +83,6 @@ GBRS_Wali/test.csv
 ActualPackage/models/__pycache__/vanilla.cpython-38.pyc
 ActualPackage/models/__pycache__/vanilla.cpython-38.pyc
 ActualPackage/resultDumpster/predictions.csv
+*.pyc
+*.csv
+*.csv
