@@ -171,9 +171,13 @@ class GBRS_vanilla(AlgoBase):
             sim = self.computeCosine(userRatingVec, groupRatingVec)
             sims.append(sim)
             centroids.append(eachGroup)
-        sorted_centroids = [ctd for sims, ctd in sorted(zip(sims, centroids),key=lambda pair: pair[0])]
-        sorted_sims      = [sims for sims, ctd in sorted(zip(sims, centroids),key=lambda pair: pair[0])]
-        return sorted_centroids[:self.num_centroids], sorted_sims[:self.num_centroids]
+        sorted_centroids = [ctd  for sims, ctd in sorted(zip(sims, centroids),key=lambda pair: pair[0], reverse = True)]
+        sorted_sims      = [sims for sims, ctd in sorted(zip(sims, centroids),key=lambda pair: pair[0], reverse = True)]
+        #sorted_centroids = [ctd  for sims, ctd in sorted(zip(sims, centroids),key=lambda pair: pair[0])]
+        #sorted_sims      = [sims for sims, ctd in sorted(zip(sims, centroids),key=lambda pair: pair[0])]
+        #RMSE: 1.3388
+        #MAE:  1.0544
+        return sorted_centroids[10:self.num_centroids], sorted_sims[10:self.num_centroids]
         
     
     def computeSimMatrix(self): # for each group, 
@@ -215,19 +219,25 @@ class GBRS_vanilla(AlgoBase):
         SUM = 0 * vecList[0]
 
         for index in range(len(correspondingSims)):
-            SUM = SUM + correspondingSims[index] * vecList[index]
-
+            #if correspondingSims[index] > 0.9:
+                SUM = SUM + correspondingSims[index] * vecList[index]
+        
         rating_vec = SUM/sum(correspondingSims)
 
         groupRatings = []
         for index in range(len(vecList)):
             groupRatings .append(vecList[index][i])
+        
+       
         #===============================================================
         #change to weighted average might be better, try change this part.
         if self.num_predicted%100 == 0:
             print(f"Have finisehd predicting {self.num_predicted} ratings..." )
-        print( f" user: {u} item: { self.trainset.to_raw_iid(i)}  est = {rating_vec[i]}  all the group ratings are {groupRatings} ")
-        print('----------')
-        return rating_vec[i]
+        #print( f" user: {u} item: { self.trainset.to_raw_iid(i)}  est = {rating_vec[i]})" )
+        #print( f" Gratings = {groupRatings} ")
+        #print( f" sims = {correspondingSims} ")
+        #print('----------')
+        #return rating_vec[i]
+        return 3
        
 
