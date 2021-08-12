@@ -6,11 +6,17 @@ import gensim
 #from nltk.tokenize import word_tokenize
 from callback import EpochLogger
 
-dir_read  = os.path.dirname(os.path.realpath(__file__)) + "\\processedFile.csv"
-dir_stopW = os.path.dirname(os.path.realpath(__file__)) + "\\stopWords.txt"
-readFrom  = os.path.dirname(os.path.realpath(__file__)) + "\\Urbana_Champaign_Comments.csv"
-writeTo   = os.path.dirname(os.path.realpath(__file__)) + "\\Urbana_Champaign_Vectors.csv"
-open(writeTo, 'a').close()
+maxInt = sys.maxsize
+
+while True:
+    # decrease the maxInt value by factor 10 
+    # as long as the OverflowError occurs.
+
+    try:
+        csv.field_size_limit(maxInt)
+        break
+    except OverflowError:
+        maxInt = int(maxInt/10)
 
 def genStopwords(dir_stopW):
     stoplist = []
@@ -21,10 +27,8 @@ def genStopwords(dir_stopW):
             stoplist.append(stopWord)
     stopwords = set(stoplist)
     return stopwords
-
 def tokenize(text, stopwords, max_len = 200):
     return [token for token in gensim.utils.simple_preprocess(text, max_len=max_len) if token not in stopwords]
-
 def genTrainset(dir_read, dir_stopW):
     docs = []
     n = 1
@@ -41,7 +45,21 @@ def genTrainset(dir_read, dir_stopW):
             else:
                 print(row)
     return docs
-            
+def AggregateCom(filePath,writeTo):
+    df = pd.read_csv(filePath)
+    print(len(df.drop_duplicates(subset=['bus_id'])))
+    gdf = df.groupby(['bus_id'])
+    rList = []
+    for x in gdf:
+        userID = x[0]
+        comments = ""
+        for _, row in x[1].iterrows():
+            comments = comments + row.text
+            row = [userID, comments]
+        rList.append(row)    
+
+    result = pd.DataFrame(rList, columns = ['bus_id', 'text'])
+    result.to_csv(writeTo, encoding='utf-8', index=False)     
 def writeVector(readFrom, writeTo, dir_stopW, modelName):
     with open(readFrom, 'r', newline = '', encoding = 'ISO-8859-1') as readfile, \
          open(writeTo,'w', newline = '', encoding = 'ISO-8859-1') as writefile:
@@ -96,9 +114,44 @@ def train(dir_read, dir_stopW, max_epochs, vec_size):
         
     model.save("D2V.model")
 #traninig==========================================
-train(dir_read, dir_stopW, 40, 30)
+#train(dir_read, dir_stopW, 40, 30)
 
 
+#writeVector2 is a function that converts aggregated comments into vectors. The comments are from all users. 
+def writeVector2(readFrom, writeTo, dir_stopW, modelName):
+    with open(readFrom, 'r', newline = '', encoding = 'ISO-8859-1') as readfile, \
+         open(writeTo,'w', newline = '', encoding='utf-8') as writefile:
+    
+        stopwords = genStopwords(dir_stopW)
+        reader = csv.reader(readfile)
+        writer = csv.writer(writefile, sys.stdout, lineterminator = '\n')
+        writer.writerow(['bus_id', 'vector'] )
+        model = gensim.models.doc2vec.Doc2Vec.load(modelName)
+    
+        next(reader)
+        lineN = 0
+        for row in reader:
+            lineN += 1
+            iid    = row[0]
+            if lineN % 100 == 0:
+                print(f"writing line {lineN}...")
+            vector = model.infer_vector(tokenize(row[1], stopwords))
+            vector = vector.tolist()
+            #print(vector)
+            #print(type(vector))
+            line = [iid,vector]
+            writer.writerow(line)
+
+
+dir_read  = os.path.dirname(os.path.realpath(__file__)) + "\\processedFile.csv"
+dir_stopW = os.path.dirname(os.path.realpath(__file__)) + "\\stopWords.txt"
+#readFrom  = os.path.dirname(os.path.realpath(__file__)) + "\\Urbana_Champaign_Comments.csv"
+#writeTo   = os.path.dirname(os.path.realpath(__file__)) + "\\Urbana_Champaign_Vectors_test.csv"
+readFrom  = os.path.dirname(os.path.realpath(__file__)) + "\\Urbana_Champaign_BusAggCom.csv"
+writeTo   = os.path.dirname(os.path.realpath(__file__)) + "\\Urbana_Champaign_AggVector.csv"
+
+
+modelName = 'C:\\Users\\cuilo\\Desktop\\Git_Hub_Repo\\GBRS\\GBRS_Wali\\D2V.model'
 #infering==========================================
-model = gensim.models.doc2vec.Doc2Vec.load("D2V.model")
-writeVector(readFrom, writeTo, dir_stopW, "D2V.model")
+#model = gensim.models.doc2vec.Doc2Vec.load(fileName)
+writeVector2(readFrom, writeTo, dir_stopW, modelName)
