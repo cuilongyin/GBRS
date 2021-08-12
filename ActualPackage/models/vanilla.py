@@ -241,13 +241,13 @@ class GBRS_vanilla(AlgoBase):
         resultWeight = {1:0, 2:0, 3:0, 4:0, 5:0}
         for eachCtd in rankedCtd:
             rList.append(self.centroidRatingDic[eachCtd][i][1])
-            if self.centroidRatingDic[eachCtd][i][1] < 1.8:
+            if self.centroidRatingDic[eachCtd][i][1] < 1.6:
                 resultWeight[1] += 1
-            elif self.centroidRatingDic[eachCtd][i][1] < 2.4:
+            elif self.centroidRatingDic[eachCtd][i][1] < 2.3:
                 resultWeight[2] += 1
-            elif self.centroidRatingDic[eachCtd][i][1] < 3.1:
+            elif self.centroidRatingDic[eachCtd][i][1] < 3.3:
                 resultWeight[3] += 1
-            elif self.centroidRatingDic[eachCtd][i][1] < 4.0:
+            elif self.centroidRatingDic[eachCtd][i][1] < 4.3:
                 resultWeight[4] += 1
             else:
                 resultWeight[5] += 1
