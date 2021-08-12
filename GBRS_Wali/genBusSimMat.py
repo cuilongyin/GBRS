@@ -83,6 +83,8 @@ def generateBusSimMat(fileName):
         currBus = row1.bus_id
         result[currBus] = defaultdict()
         currVec = row1.vector
+        #print(currVec)
+        #print(type(currVec))
         currVec = toFloat(currVec)
 
         for _, row2 in df.iterrows(): 
@@ -156,15 +158,17 @@ def cal_sum_sij(iNeighbors):
 
 
 
-fileName = "aggregatedVectors.csv"
-writePath = os.path.dirname(os.path.realpath(__file__)) + "\\simMat.bin"
+#fileName = "aggregatedVectors.csv"
+fileName = "Urbana_Champaign_AggVector.csv"
+writePath = os.path.dirname(os.path.realpath(__file__)) + "\\simMat_new.bin"
+print(writePath)
 result = generateBusSimMat(fileName)
 #writeToFile(result,writePath)
 #matFilePath = os.path.dirname(os.path.realpath(__file__)) + "/simMat.csv"
 #busSimMat = readSimMat(matFilePath)
 #file = os.path.abspath(__file__+"/..")+ "/" + fileName
 #print(#result)
-writePath = os.path.dirname(os.path.realpath(__file__)) + "\\simMat.bin"
+#writePath = os.path.dirname(os.path.realpath(__file__)) + "\\simMat_new.bin"
 with open(writePath, 'wb') as handle:
     pickle.dump(result, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
