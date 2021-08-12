@@ -90,3 +90,7 @@ ActualPackage/models/__pycache__/vanilla.cpython-38.pyc
 ActualPackage/resultDumpster/predictions.csv
 *.pyc
 ActualPackage/resultDumpster/predictions.csv
+ActualPackage/models/__pycache__/vanilla.cpython-38.pyc
+*.csv
+*.csv
+*.pyc
