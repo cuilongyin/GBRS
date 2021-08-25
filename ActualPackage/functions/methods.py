@@ -99,8 +99,10 @@ def creatingXthBatch_clustered(df, batch_size, Xth_batch, cluster_size, method):
     
     if method == 'kmean' :
         clustered = cluster_KMean_userRating(curr_df, Xth_batch, cluster_size)
-    elif method == 'spectral' :
+    elif method == 'spectral_ratingGPS' :
         clustered = cluster_spectral_part2(curr_df, Xth_batch, cluster_size)
+    elif method == 'spectral_pure' :
+        clustered = cluster_spectral_pure(curr_df, Xth_batch, cluster_size)
     else:
         return curr_df
     return clustered
@@ -122,13 +124,13 @@ def creatingXthBatch_unClustered(df, batch_size, Xth_batch): #1 based, Do not pu
 # In[604]:
 
 
-def createTrainDf_clustered(df, batch_size, NOofBatches, cluster_size, method):
+def createTrainDf_clustered(df, batch_size, NOofBatches, cluster_size, method, windowSize):
     trainList = []
     startFrom = 1
-    #if NOofBatches - 4 < 1:
-        #startFrom = 1
-    #else:
-        #startFrom = NOofBatches - 4
+    if NOofBatches - windowSize < 1:
+        startFrom = 1
+    else:
+        startFrom = NOofBatches - windowSize
     for i in range(startFrom, NOofBatches+1):
         trainList.append(creatingXthBatch_clustered(df, batch_size, i, cluster_size, method))
     trainSet = pd.concat(trainList)   
@@ -139,13 +141,13 @@ def createTrainDf_clustered(df, batch_size, NOofBatches, cluster_size, method):
 # In[605]:
 
 
-def createTrainDf_unClustered(df, batch_size, NOofBatches):
+def createTrainDf_unClustered(df, batch_size, NOofBatches, windowSize):
     trainList = []
     startFrom = 1
-    #if NOofBatches - 4 < 1:
-        #startFrom = 1
-    #else:
-        #startFrom = NOofBatches - 4
+    if NOofBatches - windowSize < 1:
+        startFrom = 1
+    else:
+        startFrom = NOofBatches - windowSize
     for i in range(startFrom, NOofBatches+1):
         trainList.append(creatingXthBatch_unClustered(df, batch_size, i))
     trainSet = pd.concat(trainList)
@@ -160,7 +162,7 @@ def cluster_KMean_userRating(df, Xth_batch, clusters_per_batch):
     df = columnImpute(df)
     pdf = df.pivot(index='user_id', columns = 'bus_id', values = 'rating') 
     columnNames = pdf.columns
-    model = KMeans(n_clusters = clusters_per_batch)
+    model = KMeans(n_clusters = clusters_per_batch,random_state=0)
     model.fit_predict(pdf)
     clusters = pd.DataFrame(model.cluster_centers_)
     clusters.columns= columnNames
@@ -168,10 +170,58 @@ def cluster_KMean_userRating(df, Xth_batch, clusters_per_batch):
     df.rename(columns={'level_0': 'user_id'}, inplace=True)
     df['user_id'] = df['user_id'] + 100000*Xth_batch # this is to make each centroids' ID special
                                                     # So this batch's IDs to mess with the next one's'
-    # Do for Behnaz, 1: convert the bus_id back
-    # 2, increament the user_id or "group id"
 
     return df
+
+def cluster_spectral_pure(df, Xth_batch, clusters_per_batch):
+    print(Xth_batch)
+    scale = 100000 # use this to accentuate the difference among different users. 
+    pdf = df.pivot(index='user_id', columns = 'bus_id', values = 'rating') 
+    global_mean = df.loc[:,'rating'].mean()
+    
+    bu = defaultdict()
+    bi = defaultdict()
+
+    for uid,_ in pdf.iterrows():
+        if uid not in bu:
+            bu[uid] = pdf.mean(axis = 1)[uid]
+
+        for iid in pdf:
+            if iid not in bi:
+                bi[iid] = pdf.mean(axis = 0)[iid]
+
+            if math.isnan(pdf.at[uid,iid]):
+            #if dfMatrix.at[uid,iid].isnan():
+                pdf.at[uid,iid] = bu[uid] + bi[iid] - global_mean
+
+    pdf = pdf.multiply(scale)
+
+    nppdf = pdf.to_numpy()
+    model = SpectralClustering(assign_labels='discretize', n_clusters=clusters_per_batch, eigen_solver = 'amg', random_state=0)
+    model.fit_predict(nppdf)
+
+    pdf = pdf.multiply(1/scale)
+    #print(model.labels_)
+
+    groupIDs = []
+    for eachLabel in model.labels_:
+        groupIDs.append(eachLabel + Xth_batch* 1000000)
+
+    toGroupId = defaultdict()
+    for i in range(len(groupIDs)):
+        toGroupId[pdf.index.values[i]] = groupIDs[i]
+
+    originalIdList = df.user_id
+    outputIdList   = []
+    for eachId in originalIdList:
+        outputIdList.append(toGroupId[eachId])
+
+    df = df[df.rating != -1]
+    df = df.assign(user_id=outputIdList)
+    
+    return df
+
+
 
 def cluster_spectral_part1(curr_df, Xth_batch, clusters_per_batch):
 
@@ -282,20 +332,23 @@ def cluster_spectral_part2(curr_df, Xth_batch, clusters_per_batch):
 # In[607]:
 
 
-def createTestDf(df, batch_size, XthBatch):
+#def createTestDf(df, batch_size, XthBatch):
 
-    #testSet = creatingXthBatch_unClustered(df, batch_size, XthBatch)
-
+    
 
     testList = []
 
-    for i in range(XthBatch, XthBatch+6): # currently training vs test = 24 : 6
+    for i in range(XthBatch, XthBatch+1): # currently training vs test = 24 : 6
         testList.append(creatingXthBatch_unClustered(df, batch_size, i))
     testSet = pd.concat(testList)   
     testSet = testSet.reset_index(drop=True)
-    #testSet.to_csv()
+ 
     return testSet 
 
+def createTestDf(df, batch_size, XthBatch):
+    
+    testSet = creatingXthBatch_unClustered(df, batch_size, XthBatch)
+    return testSet 
 
 # In[608]:
 
@@ -400,9 +453,9 @@ def furtherFilter(num_rating,df_train, df_trainOrignal, df_test):
     
 # In[614]:
 
-def prpareTrainTestObj(df, batch_size, NOofBatches, cluster_size, method):
+def prpareTrainTestObj(df, batch_size, NOofBatches, cluster_size, method, windowSize):
     print("Preparing training and testing datasets and objects ...")
-    df_train = createTrainDf_clustered(df, batch_size, NOofBatches, cluster_size, method)
+    df_train = createTrainDf_clustered(df, batch_size, NOofBatches, cluster_size, method, windowSize)
     df_test  = createTestDf(df, batch_size, NOofBatches+1)
     df_trainOrignal = createTrainDf_unClustered(df, batch_size, NOofBatches) # the original rating matrix is not imputed at this point
     
@@ -437,7 +490,7 @@ def batchRun(model, trainSet, originalDic, testSet, num_of_centroids,
 
 
 def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
-             batch_size, num_of_centroids, factors, POIsims, method, maxEpochs = 40, 
+             batch_size, num_of_centroids, factors, POIsims, method, windowSize, maxEpochs = 40, 
              Random = 6, mae = True, rmse = True):
     # if you need to see results, set mae or rmse to True
     # Randome is Random state 
@@ -446,10 +499,11 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
     else:
         filePrefix  = os.path.dirname(os.path.realpath(__file__)) + "/../PackageTestGround/Result/" 
         
-    output = filePrefix + 'GBRS' + '-sYear('    + str(startYear) +')'\
+    output = filePrefix + 'GBRS' + '-cMethod('    + str(method) +')'\
                                  + '-NOB('      + str(totalNOB)  +')'\
                                  + '-cSize('    + str(cluster_size) +')'\
                                  + '-NOC('      + str(num_of_centroids) +')'\
+                                 + '-WS('      + str(windowSize) +')'\
                                  + '.csv'
 
     log = open(output, 'w')
@@ -464,7 +518,7 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
         print("NO SIM FILES !!!")
         busSimMat = None
     
-    for XthBatch in range(24, 25):
+    for XthBatch in range(1, totalNOB+1):
         print(f"=================Starting the {XthBatch}th batch=================")
         trainSet, testSet, originalDic = prpareTrainTestObj(df, batch_size, XthBatch, cluster_size, method)
         batchRun(model, trainSet, originalDic, testSet, num_of_centroids, factors, 

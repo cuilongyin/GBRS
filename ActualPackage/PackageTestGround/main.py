@@ -10,16 +10,17 @@ def main_vanilla():
     fileName = "UC.csv"
     startYear = 2007
     min_NO_rating = 9999999999   # total is 576065, filtering is too slow because of the matrix being too large.
-    batch_size = 1000    
-    cluster_size = 3      #clusters per batch
+    batch_size = 900    
+    cluster_size = 6      #clusters per batch
     totalNOB = 33           #number of Batch, not including the test batch
     factors = 3
-    num_of_centroids = 30
+    num_of_centroids = 7
     POIsims = 1
-    method = 'kmean'
+    windowSize = 2
+    method = 'spectral_pure' # kmean, spectral_ratingGPS, spectral_pure
     functions.totalRun(model, fileName, startYear, min_NO_rating,
                        totalNOB, cluster_size, batch_size, num_of_centroids, 
-                       factors, POIsims, method)
+                       factors, POIsims, method, windowSize)
 #0-5: 1.3619   5-10: 1.3775  10-15: 1.3568 15-20: 1.3541  20-25: RMSE: 1.3812
 def main_POIsims():
     
@@ -34,9 +35,10 @@ def main_POIsims():
     num_of_centroids = 6
     POIsims = 1
     method = 'kmean'
+    windowSize = 2
     functions.totalRun(model, fileName, startYear, min_NO_rating, 
                        totalNOB, cluster_size, batch_size, num_of_centroids, 
-                       factors, POIsims, method)
+                       factors, POIsims, method, windowSize)
     
 
 #def main_
