@@ -180,7 +180,7 @@ class GBRS_vanilla(AlgoBase):
         #sorted_sims      = [sims for sims, ctd in sorted(zip(sims, centroids),key=lambda pair: pair[0])]
         #RMSE: 1.3388
         #MAE:  1.0544
-        return sorted_centroids[10:self.num_centroids], sorted_sims[10:self.num_centroids]
+        return sorted_centroids[:self.num_centroids], sorted_sims[:self.num_centroids]
         
     
     def computeSimMatrix(self): # for each group, 
