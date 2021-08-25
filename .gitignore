@@ -1,10 +1,8 @@
 .vscode/launch.json
 .vscode/settings.json
 Phoenix.csv
-SimpleNMF/test.py
 *.txt
 GBRS_Wali/Urbana_Champaign_Vectors.csv
-GBRS_Wali/test.py
 GBRS_Wali/testFile
 ActualModule/assisting_functions/__pycache__/functions.cpython-38.pyc
 ActualModule/models/__pycache__/GBRS_vanilla.cpython-38.pyc
@@ -14,7 +12,6 @@ test/neighbor_lists.dict
 test/prereq.dict
 test/Results.csv
 test/test_triplets.csv
-test/test.py
 test/CourseMF (1).py
 test/Results0.csv
 Results.csv
