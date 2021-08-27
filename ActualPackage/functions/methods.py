@@ -122,17 +122,19 @@ def creatingXthBatch_unClustered(df, batch_size, Xth_batch): #1 based, Do not pu
 
 
 # In[604]:
+def workOnBatchDics(df, batchDic_cluster, batchDic_unCluster, Xth_batch, batch_size, cluster_size, method):
+    batchDic_cluster[Xth_batch]   = creatingXthBatch_clustered(df, batch_size, Xth_batch, cluster_size, method)
+    batchDic_unCluster[Xth_batch] = creatingXthBatch_unClustered(df, batch_size, Xth_batch)
+    return batchDic_cluster, batchDic_unCluster
 
 
-def createTrainDf_clustered(df, batch_size, NOofBatches, cluster_size, method, windowSize):
+def createTrainDf_clustered(df, batchDic_cluster, batchDic_unCluster, batch_size, NOofBatches, cluster_size, method, windowSize):
     trainList = []
-    startFrom = 1
-    if NOofBatches - windowSize < 1:
-        startFrom = 1
-    else:
-        startFrom = NOofBatches - windowSize
+    startFrom = max(NOofBatches - windowSize, 1)
     for i in range(startFrom, NOofBatches+1):
-        trainList.append(creatingXthBatch_clustered(df, batch_size, i, cluster_size, method))
+        if i not in batchDic_cluster:
+            batchDic_cluster, _ = workOnBatchDics(df, batchDic_cluster, batchDic_unCluster, i, batch_size, cluster_size, method)
+        trainList.append(batchDic_cluster[i])
     trainSet = pd.concat(trainList)   
     trainSet = trainSet.reset_index(drop=True)
     return trainSet
@@ -141,18 +143,12 @@ def createTrainDf_clustered(df, batch_size, NOofBatches, cluster_size, method, w
 # In[605]:
 
 
-def createTrainDf_unClustered(df, batch_size, NOofBatches, windowSize):
-    trainList = []
-    startFrom = 1
-    if NOofBatches - windowSize < 1:
-        startFrom = 1
-    else:
-        startFrom = NOofBatches - windowSize
-    for i in range(startFrom, NOofBatches+1):
-        trainList.append(creatingXthBatch_unClustered(df, batch_size, i))
-    trainSet = pd.concat(trainList)
+def createTrainDf_unClustered(batchDic_unCluster, NOofBatches, windowSize):
+
+    startFrom = max(NOofBatches - windowSize, 1)
+    trainList = [batchDic_unCluster[i] for i in range(startFrom, NOofBatches+1)]
     
-    return trainSet
+    return pd.concat(trainList)
 
 
 # In[606]:
@@ -332,23 +328,11 @@ def cluster_spectral_part2(curr_df, Xth_batch, clusters_per_batch):
 # In[607]:
 
 
-#def createTestDf(df, batch_size, XthBatch):
-
+def createTestDf(df, batchDic_unCluster, batch_size, XthBatch):
     
-
-    testList = []
-
-    for i in range(XthBatch, XthBatch+1): # currently training vs test = 24 : 6
-        testList.append(creatingXthBatch_unClustered(df, batch_size, i))
-    testSet = pd.concat(testList)   
-    testSet = testSet.reset_index(drop=True)
- 
-    return testSet 
-
-def createTestDf(df, batch_size, XthBatch):
-    
-    testSet = creatingXthBatch_unClustered(df, batch_size, XthBatch)
-    return testSet 
+    if XthBatch not in batchDic_unCluster:
+        batchDic_unCluster[XthBatch] = creatingXthBatch_unClustered(df, batch_size, XthBatch)
+    return batchDic_unCluster[XthBatch]
 
 # In[608]:
 
@@ -453,11 +437,12 @@ def furtherFilter(num_rating,df_train, df_trainOrignal, df_test):
     
 # In[614]:
 
-def prpareTrainTestObj(df, batch_size, NOofBatches, cluster_size, method, windowSize):
+def prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster, batch_size, NOofBatches, cluster_size, method, windowSize):
     print("Preparing training and testing datasets and objects ...")
-    df_train = createTrainDf_clustered(df, batch_size, NOofBatches, cluster_size, method, windowSize)
-    df_test  = createTestDf(df, batch_size, NOofBatches+1)
-    df_trainOrignal = createTrainDf_unClustered(df, batch_size, NOofBatches) # the original rating matrix is not imputed at this point
+    df_train = createTrainDf_clustered(df, batchDic_cluster, batchDic_unCluster, batch_size, NOofBatches, cluster_size, method, windowSize)
+    df_test  = createTestDf(df, batchDic_unCluster, batch_size, NOofBatches+1) 
+    df_trainOrignal = createTrainDf_unClustered(batchDic_unCluster, NOofBatches, windowSize) 
+    # the original rating matrix is not imputed at this point
     
     df_train = df_train[['user_id', 'bus_id', 'rating']]
     df_test  = df_test[['user_id', 'bus_id', 'rating']]
@@ -517,10 +502,13 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
     else:
         print("NO SIM FILES !!!")
         busSimMat = None
-    
+
+    batchDic_cluster = defaultdict()
+    batchDic_unCluster = defaultdict()
+
     for XthBatch in range(1, totalNOB+1):
         print(f"=================Starting the {XthBatch}th batch=================")
-        trainSet, testSet, originalDic = prpareTrainTestObj(df, batch_size, XthBatch, cluster_size, method)
+        trainSet, testSet, originalDic = prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster,batch_size, XthBatch, cluster_size, method, windowSize)
         batchRun(model, trainSet, originalDic, testSet, num_of_centroids, factors, 
                  log, busSimMat, epochs = maxEpochs, random = Random, MAE = mae, RMSE = rmse )
     log.close

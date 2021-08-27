@@ -15,7 +15,7 @@ def main_vanilla():
     totalNOB = 33           #number of Batch, not including the test batch
     factors = 3
     num_of_centroids = 7
-    POIsims = 1
+    POIsims = 0
     windowSize = 2
     method = 'spectral_pure' # kmean, spectral_ratingGPS, spectral_pure
     functions.totalRun(model, fileName, startYear, min_NO_rating,
