@@ -1,6 +1,7 @@
 import os
 import csv
 import math
+import time
 import pickle
 import platform
 import numpy as np
@@ -11,6 +12,7 @@ from surprise import Dataset
 from surprise import accuracy
 from sklearn.cluster import KMeans
 from collections import defaultdict
+from sklearn.cluster import DBSCAN
 from sklearn.cluster import SpectralClustering
 from surprise.model_selection import train_test_split
 # In[596]:
@@ -87,7 +89,7 @@ def removeUsers(df, min_NO_ratings):
 # In[602]:
 
 
-def creatingXthBatch_clustered(df, batch_size, Xth_batch, cluster_size, method): #1 based, Do not put 0 or below
+def creatingXthBatch_clustered(df, batch_size, Xth_batch, cluster_size, method, ratio): #1 based, Do not put 0 or below
     if Xth_batch <= 0:
         raise Exception("1-based, DO NOT put 0 or below")
     
@@ -100,9 +102,11 @@ def creatingXthBatch_clustered(df, batch_size, Xth_batch, cluster_size, method):
     if method == 'kmean' :
         clustered = cluster_KMean_userRating(curr_df, Xth_batch, cluster_size)
     elif method == 'spectral_ratingGPS' :
-        clustered = cluster_spectral_part2(curr_df, Xth_batch, cluster_size)
+        clustered = cluster_ratingGPS_part3(curr_df, Xth_batch, cluster_size, ratio)
     elif method == 'spectral_pure' :
         clustered = cluster_spectral_pure(curr_df, Xth_batch, cluster_size)
+    elif method == 'cluster_DBSCAN' :
+        clustered = cluster_DBSCAN(curr_df, Xth_batch, cluster_size)
     else:
         return curr_df
     return clustered
@@ -122,18 +126,18 @@ def creatingXthBatch_unClustered(df, batch_size, Xth_batch): #1 based, Do not pu
 
 
 # In[604]:
-def workOnBatchDics(df, batchDic_cluster, batchDic_unCluster, Xth_batch, batch_size, cluster_size, method):
-    batchDic_cluster[Xth_batch]   = creatingXthBatch_clustered(df, batch_size, Xth_batch, cluster_size, method)
+def workOnBatchDics(df, batchDic_cluster, batchDic_unCluster, Xth_batch, batch_size, cluster_size, method, ratio):
+    batchDic_cluster[Xth_batch]   = creatingXthBatch_clustered(df, batch_size, Xth_batch, cluster_size, method, ratio)
     batchDic_unCluster[Xth_batch] = creatingXthBatch_unClustered(df, batch_size, Xth_batch)
     return batchDic_cluster, batchDic_unCluster
 
 
-def createTrainDf_clustered(df, batchDic_cluster, batchDic_unCluster, batch_size, NOofBatches, cluster_size, method, windowSize):
+def createTrainDf_clustered(df, batchDic_cluster, batchDic_unCluster, batch_size, NOofBatches, cluster_size, method, windowSize, ratio):
     trainList = []
     startFrom = max(NOofBatches - windowSize, 1)
     for i in range(startFrom, NOofBatches+1):
         if i not in batchDic_cluster:
-            batchDic_cluster, _ = workOnBatchDics(df, batchDic_cluster, batchDic_unCluster, i, batch_size, cluster_size, method)
+            batchDic_cluster, _ = workOnBatchDics(df, batchDic_cluster, batchDic_unCluster, i, batch_size, cluster_size, method, ratio)
         trainList.append(batchDic_cluster[i])
     trainSet = pd.concat(trainList)   
     trainSet = trainSet.reset_index(drop=True)
@@ -217,9 +221,41 @@ def cluster_spectral_pure(df, Xth_batch, clusters_per_batch):
     
     return df
 
+def cluster_DBSCAN(df, Xth_batch, clusters_per_batch):
+    print(Xth_batch)
+    scale = 100000 # use this to accentuate the difference among different users. 
+    pdf = df.pivot(index='user_id', columns = 'bus_id', values = 'rating') 
+    global_mean = df.loc[:,'rating'].mean()
+    bu = defaultdict()
+    bi = defaultdict()
+    for uid,_ in pdf.iterrows():
+        if uid not in bu:
+            bu[uid] = pdf.mean(axis = 1)[uid]
+        for iid in pdf:
+            if iid not in bi:
+                bi[iid] = pdf.mean(axis = 0)[iid]
 
+            if math.isnan(pdf.at[uid,iid]):
+                pdf.at[uid,iid] = bu[uid] + bi[iid] - global_mean
+    pdf = pdf.multiply(scale)
+    nppdf = pdf.to_numpy()
+    #model = DBSCAN(min_samples=clusters_per_batch)
+    model = DBSCAN(eps = 1000, min_samples=2)
+    model.fit_predict(nppdf)
+    print(model.labels_)
+    pdf = pdf.multiply(1/scale)
+    groupIDs = [eachLabel + Xth_batch* 1000000 for eachLabel in model.labels_]
+    toGroupId = defaultdict()
+    for i in range(len(groupIDs)):
+        toGroupId[pdf.index.values[i]] = groupIDs[i]
+    originalIdList = df.user_id
+    outputIdList = [toGroupId[eachId] for eachId in originalIdList]
+    df = df[df.rating != -1]
+    df = df.assign(user_id=outputIdList)
+    
+    return df
 
-def cluster_spectral_part1(curr_df, Xth_batch, clusters_per_batch):
+def cluster_ratingGPS_part1(curr_df, Xth_batch, clusters_per_batch):
 
     print(f"--- Performing {Xth_batch}th batch clustering (spectral) ---")
     global_mean = curr_df.loc[:,'rating'].mean()
@@ -257,7 +293,7 @@ def cluster_spectral_part1(curr_df, Xth_batch, clusters_per_batch):
     
     locDf = locDf.drop_duplicates().reset_index(drop=True)
     #============================================== Finished Location Simulation==========================================
-
+    #: GPS similarities calculation
     user1s  = []
     user2s  = []
     GPSsims = []
@@ -270,7 +306,8 @@ def cluster_spectral_part1(curr_df, Xth_batch, clusters_per_batch):
             user1s.append(row1['user_id'])
             user2s.append(row2['user_id'])
             GPSsims.append(sim)
- 
+
+    #: rating similarities calculation
     for user1 in dfMatrix.index:
         for user2 in dfMatrix.index:
             A = dfMatrix.loc[user1].values.tolist()
@@ -278,8 +315,32 @@ def cluster_spectral_part1(curr_df, Xth_batch, clusters_per_batch):
             sim = np.dot(A,B)/(np.linalg.norm(A)*np.linalg.norm(B))
             Rsims.append(sim)
 
+    #saving to pickle file 
+    part1Package = {
+        'user1s':user1s,
+        'user2s':user2s,
+        'GPSsims':GPSsims,
+        'Rsims':Rsims
+        }
 
-    ratio = 0.5
+    fileName = "./PickleJar/" +str(Xth_batch) + "thPart1Package.pkl"
+    with open(fileName, 'wb') as pDump:
+        pickle.dump(part1Package, pDump)
+
+    return part1Package
+
+def cluster_ratingGPS_part2(curr_df, Xth_batch, clusters_per_batch, ratio):
+
+    fileName = "./PickleJar/" +str(Xth_batch) + "thPart1Package.pkl"
+    if (os.path.exists(fileName)):
+        with open(fileName, 'rb') as pDump:
+            part1Package = pickle.load(pDump)
+    else:
+        part1Package = cluster_ratingGPS_part1(curr_df, Xth_batch, clusters_per_batch) 
+    user1s = part1Package['user1s']
+    user2s = part1Package['user2s']
+    GPSsims = part1Package['GPSsims']
+    Rsims = part1Package['Rsims']
     sims1 = [i*ratio for i in GPSsims]
     sims2 = [i*(1-ratio) for i in Rsims]
     combinedSims = list(map(add, sims1, sims2))
@@ -289,17 +350,17 @@ def cluster_spectral_part1(curr_df, Xth_batch, clusters_per_batch):
                                  'sim': combinedSims 
                            })
     simMat = simMat.pivot( index='user_id_R', columns = 'user_id_C', values = 'sim') 
-    fileName = "./PickleJar/" +str(Xth_batch) + "thSimMat.pkl"
+    fileName = "./PickleJar/" +str(Xth_batch) + "thSimMat"+   "_ratio(" + str(ratio)  + ").pkl"
     simMat.to_pickle(fileName)
     return simMat
     
-def cluster_spectral_part2(curr_df, Xth_batch, clusters_per_batch):   
+def cluster_ratingGPS_part3(curr_df, Xth_batch, clusters_per_batch, ratio):   
     #============================================== Finished Calculate Sims ==========================================
-    fileName = "./PickleJar/" +str(Xth_batch) + "thSimMat.pkl"
+    fileName = "./PickleJar/" +str(Xth_batch) + "thSimMat"+   "_ratio(" + str(ratio)  + ").pkl"
     if (os.path.exists(fileName)):
         simMat = pd.read_pickle(fileName)
     else:
-        simMat = cluster_spectral_part1(curr_df, Xth_batch, clusters_per_batch)    
+        simMat = cluster_ratingGPS_part2(curr_df, Xth_batch, clusters_per_batch, ratio)    
     #print(simMat)
     simArray = np.array(simMat)
     num_clusters = clusters_per_batch
@@ -307,18 +368,14 @@ def cluster_spectral_part2(curr_df, Xth_batch, clusters_per_batch):
     sc.fit(simArray)
     #================================================ Finished Clustering ==============================================
 
-    groupIDs = []
-    for eachLabel in sc.labels_:
-        groupIDs.append(eachLabel + Xth_batch* 1000000)
+    groupIDs = [eachLabel + Xth_batch* 1000000 for eachLabel in sc.labels_]
 
     toGroupId = defaultdict()
     for i in range(len(groupIDs)):
         toGroupId[simMat.index.values[i]] = groupIDs[i]
 
     originalIdList = curr_df.user_id
-    outputIdList   = []
-    for eachId in originalIdList:
-        outputIdList.append(toGroupId[eachId])
+    outputIdList = [toGroupId[eachId] for eachId in originalIdList]
 
 
     curr_df = curr_df.assign(user_id=outputIdList)
@@ -437,9 +494,9 @@ def furtherFilter(num_rating,df_train, df_trainOrignal, df_test):
     
 # In[614]:
 
-def prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster, batch_size, NOofBatches, cluster_size, method, windowSize):
+def prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster, batch_size, NOofBatches, cluster_size, method, windowSize, ratio):
     print("Preparing training and testing datasets and objects ...")
-    df_train = createTrainDf_clustered(df, batchDic_cluster, batchDic_unCluster, batch_size, NOofBatches, cluster_size, method, windowSize)
+    df_train = createTrainDf_clustered(df, batchDic_cluster, batchDic_unCluster, batch_size, NOofBatches, cluster_size, method, windowSize, ratio)
     df_test  = createTestDf(df, batchDic_unCluster, batch_size, NOofBatches+1) 
     df_trainOrignal = createTrainDf_unClustered(batchDic_unCluster, NOofBatches, windowSize) 
     # the original rating matrix is not imputed at this point
@@ -475,8 +532,8 @@ def batchRun(model, trainSet, originalDic, testSet, num_of_centroids,
 
 
 def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
-             batch_size, num_of_centroids, factors, POIsims, method, windowSize, maxEpochs = 40, 
-             Random = 6, mae = True, rmse = True):
+             batch_size, num_of_centroids, factors, POIsims, method, windowSize, ratio,
+             maxEpochs = 40, Random = 6, mae = True, rmse = True):
     # if you need to see results, set mae or rmse to True
     # Randome is Random state 
     if platform.system() == 'Windows':
@@ -489,6 +546,7 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
                                  + '-cSize('    + str(cluster_size) +')'\
                                  + '-NOC('      + str(num_of_centroids) +')'\
                                  + '-WS('      + str(windowSize) +')'\
+                                 + '-time('    + str(int(time.time())) + ')'\
                                  + '.csv'
 
     log = open(output, 'w')
@@ -508,7 +566,7 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
 
     for XthBatch in range(1, totalNOB+1):
         print(f"=================Starting the {XthBatch}th batch=================")
-        trainSet, testSet, originalDic = prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster,batch_size, XthBatch, cluster_size, method, windowSize)
+        trainSet, testSet, originalDic = prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster,batch_size, XthBatch, cluster_size, method, windowSize, ratio)
         batchRun(model, trainSet, originalDic, testSet, num_of_centroids, factors, 
                  log, busSimMat, epochs = maxEpochs, random = Random, MAE = mae, RMSE = rmse )
     log.close
