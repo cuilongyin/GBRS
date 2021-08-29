@@ -6,7 +6,7 @@ import math
 from operator import add
 from collections import defaultdict
 from sklearn.cluster import SpectralClustering
-
+import time
 def columnImpute(df):
     pdf = df.pivot(index='user_id', columns = 'bus_id', values = 'rating')
     pdf_mean = pdf.mean(axis = 0)
@@ -23,13 +23,13 @@ df = pd.DataFrame({'user_id':    ['zzz0','zzz0','zzz1','zzz1','zzz1','zzz2','zzz
                    })                 
 
 #df = columnImpute(df)
-pdf = df.pivot(index='user_id', columns = 'bus_id', values = 'rating')
+#pdf = df.pivot(index='user_id', columns = 'bus_id', values = 'rating')
 #model = SpectralClustering(assign_labels='discretize', n_clusters=3, eigen_solver = 'amg', random_state=0)
-pdf.fillna(0, inplace=True)
+#pdf.fillna(0, inplace=True)
 #model.fit_predict(pdf)
 #rint(model.labels_)
-nppdf = pdf.to_numpy()
-print(nppdf)
+#nppdf = pdf.to_numpy()
+#print(nppdf)
 
 
 def cluster_spectral(curr_df, Xth_batch, clusters_per_batch):
@@ -128,3 +128,4 @@ def loadSim(curr_df, Xth_batch, clusters_per_batch):
 
 #print(result)
 #df111 = pd.DataFrame({'user_id111':    [1,1,1,1,1,1,1,1,1,1,1,1]})
+print(str(int(time.time())))
