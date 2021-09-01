@@ -6,6 +6,7 @@ import pickle
 import platform
 import numpy as np
 import pandas as pd
+from fcmeans import FCM
 from operator import add
 from surprise import Reader
 from surprise import Dataset
@@ -107,6 +108,8 @@ def creatingXthBatch_clustered(df, batch_size, Xth_batch, cluster_size, method, 
         clustered = cluster_spectral_pure(curr_df, Xth_batch, cluster_size)
     elif method == 'cluster_DBSCAN' :
         clustered = cluster_DBSCAN(curr_df, Xth_batch, cluster_size)
+    elif method == 'cluster_FCM' :
+        clustered = cluster_FCM(curr_df, Xth_batch, cluster_size)
     else:
         return curr_df
     return clustered
@@ -219,6 +222,54 @@ def cluster_spectral_pure(df, Xth_batch, clusters_per_batch):
     df = df[df.rating != -1]
     df = df.assign(user_id=outputIdList)
     
+    return df
+
+
+def cluster_FCM(df, Xth_batch, clusters_per_batch):
+    print(Xth_batch)
+    
+    scale = 100000 # use this to accentuate the difference among different users. 
+    pdf = df.pivot(index='user_id', columns = 'bus_id', values = 'rating') 
+    columnNames = pdf.columns
+    global_mean = df.loc[:,'rating'].mean()
+    
+    bu = defaultdict()
+    bi = defaultdict()
+
+    for uid,_ in pdf.iterrows():
+        if uid not in bu:
+            bu[uid] = pdf.mean(axis = 1)[uid]
+
+        for iid in pdf:
+            if iid not in bi:
+                bi[iid] = pdf.mean(axis = 0)[iid]
+
+            if math.isnan(pdf.at[uid,iid]):
+            #if dfMatrix.at[uid,iid].isnan():
+                temp = bu[uid] + bi[iid] - global_mean
+                if temp < 0 :
+                    temp = 0
+                if temp >5:
+                    temp = 5
+                pdf.at[uid,iid] = temp
+
+    #pdf = pdf.multiply(scale)
+    #print(pdf)
+    nppdf = pdf.to_numpy()
+    model = FCM(n_clusters=clusters_per_batch)
+    model.fit(nppdf)
+
+    #pdf = pdf.multiply(1/scale)
+
+    fcm_centers = model.centers
+    fcm_labels = model.predict(nppdf)
+    #print(fcm_labels)
+    #print(fcm_centers)
+    clusters = pd.DataFrame(fcm_centers)
+    clusters.columns= columnNames
+    df = clusters.T.unstack().reset_index(name='rating')
+    df.rename(columns={'level_0': 'user_id'}, inplace=True)
+    df['user_id'] = df['user_id'] + 100000*Xth_batch
     return df
 
 def cluster_DBSCAN(df, Xth_batch, clusters_per_batch):
