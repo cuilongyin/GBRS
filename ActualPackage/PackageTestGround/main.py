@@ -19,15 +19,15 @@ def main_vanilla():
     num_of_centroids = 7
     POIsims = 0
     windowSize = 1
-    method = 'cluster_FCM' # kmean, spectral_ratingGPS, spectral_pure, cluster_DBSCAN, cluster_FCM
-    ratio = 0.5 # this parameter only is used when  the method =  'spectral_ratingGPS'
+    method = 'spectral_ratingGPS' # kmean, spectral_ratingGPS, spectral_pure, cluster_DBSCAN, cluster_FCM
+    ratio = 0 # this parameter only is used when  the method =  'spectral_ratingGPS'
 
-    methods = ['kmean', 'spectral_ratingGPS', 'spectral_pure', 'cluster_DBSCAN', 'cluster_FCM']
-    for i in methods:
-        
-        functions.totalRun(model, fileName, startYear, min_NO_rating,
+    #methods = ['kmean', 'spectral_ratingGPS', 'spectral_pure', 'cluster_DBSCAN', 'cluster_FCM']
+    #for i in range(1,34):
+        #windowSize = i
+    functions.totalRun(model, fileName, startYear, min_NO_rating,
                        totalNOB, cluster_size, batch_size, num_of_centroids, 
-                       factors, POIsims, i, windowSize, ratio)
+                       factors, POIsims, method, windowSize, ratio)
 #0-5: 1.3619   5-10: 1.3775  10-15: 1.3568 15-20: 1.3541  20-25: RMSE: 1.3812
 def main_POIsims():
     

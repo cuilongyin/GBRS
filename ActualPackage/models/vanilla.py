@@ -154,23 +154,22 @@ class GBRS_vanilla(AlgoBase):
         #it is easy to debug this way
         var1 = dot(vec1, vec2)
         var2 = (norm(vec1)*norm(vec2))
-        result = var1/var2
-        return result
+        return var1/var2
 
-    
     def findMostSimilars(self, user):
         centroids = []
         sims  = []
-        #print(user)
+
         userRatingVec = [ x[1] for x in self.originalDic[user]]
         itemVec   = [ self.trainset.to_inner_iid(x[0]) for x in self.originalDic[user] ]
 
         for eachGroup in list(self.trainset.all_users()):
-            groupRatingVec = []
             groupItemRatingVec = self.centroidRatingDic[eachGroup]
-            for item_rating in groupItemRatingVec:
-                if item_rating[0] in itemVec:
-                    groupRatingVec.append(item_rating[1])
+            groupRatingVec = [
+                item_rating[1]
+                for item_rating in groupItemRatingVec
+                if item_rating[0] in itemVec
+            ]
             sim = self.computeCosine(userRatingVec, groupRatingVec)
             sims.append(sim)
             centroids.append(eachGroup)
@@ -203,6 +202,26 @@ class GBRS_vanilla(AlgoBase):
         print("Done sim calculating ....")
         return self          
     
+    def analyzeUser(self, u):
+        userRatingList = self.originalDic[u]
+        ratingPattern  = {1:0, 2:0, 3:0, 4:0, 5:0}
+        for eachPair in userRatingList:
+            if   eachPair[1] == 1:
+                ratingPattern[1] += 1
+
+            elif eachPair[1] == 2:
+                ratingPattern[2] += 1
+
+            elif eachPair[1] == 3:
+                ratingPattern[3] += 1
+
+            elif eachPair[1] == 4:
+                ratingPattern[4] += 1
+
+            else:
+                ratingPattern[5] += 1
+        return ratingPattern
+
     def estimate(self, u, i):
         #print(f"user {u}, item {i}")
         self.num_predicted += 1
@@ -268,6 +287,14 @@ class GBRS_vanilla(AlgoBase):
         #print(resultWeight)
         #print('----------')
         #return rating_vec[i]
+
+        #ratingPattern = self.analyzeUser(u)
+        #print(ratingPattern)
+        #if ratingPattern[1] > 2*(ratingPattern[5] + ratingPattern[2] + ratingPattern[3] + ratingPattern[4]):
+            #print('#======================================================================================#')
+            #print(result)
+            #print(ratingPattern)
+            #result = 1
         return result
        
        

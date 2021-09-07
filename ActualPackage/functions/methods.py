@@ -204,7 +204,7 @@ def cluster_spectral_pure(df, Xth_batch, clusters_per_batch):
     model.fit_predict(nppdf)
 
     pdf = pdf.multiply(1/scale)
-    #print(model.labels_)
+    print(model.labels_)
 
     groupIDs = []
     for eachLabel in model.labels_:
@@ -223,7 +223,6 @@ def cluster_spectral_pure(df, Xth_batch, clusters_per_batch):
     df = df.assign(user_id=outputIdList)
     
     return df
-
 
 def cluster_FCM(df, Xth_batch, clusters_per_batch):
     print(Xth_batch)
@@ -344,7 +343,7 @@ def cluster_ratingGPS_part1(curr_df, Xth_batch, clusters_per_batch):
     
     locDf = locDf.drop_duplicates().reset_index(drop=True)
     #============================================== Finished Location Simulation==========================================
-    #: GPS similarities calculation
+    #: GPS similarities calculation-----------------------------------------------------------
     user1s  = []
     user2s  = []
     GPSsims = []
@@ -358,7 +357,7 @@ def cluster_ratingGPS_part1(curr_df, Xth_batch, clusters_per_batch):
             user2s.append(row2['user_id'])
             GPSsims.append(sim)
 
-    #: rating similarities calculation
+    #: rating similarities calculation--------------------------------------------------------
     for user1 in dfMatrix.index:
         for user2 in dfMatrix.index:
             A = dfMatrix.loc[user1].values.tolist()
