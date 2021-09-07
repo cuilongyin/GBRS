@@ -69,13 +69,48 @@ def readCSV(fileName):#
             else:
                 userList[user][5] += 1
     return userList          
-               
-x = readCSV(readFrom)
 
-for eachK in x:
-    if max(x[eachK].items(), key=operator.itemgetter(1))[0] == 1:
-        if sum(x[eachK].values()) > 4:
-            if max(x[eachK].items(), key=operator.itemgetter(1))[1] > sum(x[eachK].values())/2:
+def overallRating(fileName):
+    #rPath = os.path.abspath(__file__+"/../..")+ "\\ActualPackage\\resultDumpster\\" + fileName # <---- this is what I mean
+    #print(rPath)
+    ratingsPath = fileName
+    uid = []
+    iid = []
+    print("####################################################################################")
+    #resultWeight = {1:0, 2:0, 3:0, 4:0, 5:0}
+
+    dic = {1:0, 2:0, 3:0, 4:0, 5:0}
+
+
+    with open(ratingsPath, newline = '', encoding = 'ISO-8859-1') as csvfile2:
+        reader2 = csv.reader(csvfile2)
+
+        for row2 in reader2:
+            
+            rating = row2[2]
+            if rating ==  '1':
+                dic[1] += 1
+            elif rating == '2':
+                dic[2] += 1
+            elif row2[2] == '3':
+                dic[3] += 1
+            elif row2[2] == '4':
+                dic[4] += 1
+            else:
+                dic[5] += 1
+    return dic
+
+d = overallRating(readFrom)
+print(d)
+userList = readCSV(readFrom)
+#print(userList)
+for eachK in userList:
+    #print(eachK, userList[eachK])    
+    if max(userList[eachK].items(), key=operator.itemgetter(1))[0] == 1: # most ratings are 1 or 5 or what you want
+        #print(max(userList[eachK].items(), key=operator.itemgetter(1)))
+        if sum(userList[eachK].values()) > 4:
+            if max(userList[eachK].items(), key=operator.itemgetter(1))[1] > sum(userList[eachK].values())/4:
                 print('--------------------')
                 print(eachK)
-                print(x[eachK])
+                print(userList[eachK])
+            
