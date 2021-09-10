@@ -90,7 +90,7 @@ def removeUsers(df, min_NO_ratings):
 # In[602]:
 
 
-def creatingXthBatch_clustered(df, batch_size, Xth_batch, cluster_size, method, ratio): #1 based, Do not put 0 or below
+def creatingXthBatch_clustered(df, batch_size, Xth_batch, cluster_size, method, ratio, pickleJarName): #1 based, Do not put 0 or below
     if Xth_batch <= 0:
         raise Exception("1-based, DO NOT put 0 or below")
     
@@ -103,7 +103,7 @@ def creatingXthBatch_clustered(df, batch_size, Xth_batch, cluster_size, method, 
     if method == 'kmean' :
         clustered = cluster_KMean_userRating(curr_df, Xth_batch, cluster_size)
     elif method == 'spectral_ratingGPS' :
-        clustered = cluster_ratingGPS_part3(curr_df, Xth_batch, cluster_size, ratio)
+        clustered = cluster_ratingGPS_part3(curr_df, Xth_batch, cluster_size, ratio, pickleJarName)
     elif method == 'spectral_pure' :
         clustered = cluster_spectral_pure(curr_df, Xth_batch, cluster_size)
     elif method == 'cluster_DBSCAN' :
@@ -129,18 +129,18 @@ def creatingXthBatch_unClustered(df, batch_size, Xth_batch): #1 based, Do not pu
 
 
 # In[604]:
-def workOnBatchDics(df, batchDic_cluster, batchDic_unCluster, Xth_batch, batch_size, cluster_size, method, ratio):
-    batchDic_cluster[Xth_batch]   = creatingXthBatch_clustered(df, batch_size, Xth_batch, cluster_size, method, ratio)
+def workOnBatchDics(df, batchDic_cluster, batchDic_unCluster, Xth_batch, batch_size, cluster_size, method, ratio, pickleJarName):
+    batchDic_cluster[Xth_batch]   = creatingXthBatch_clustered(df, batch_size, Xth_batch, cluster_size, method, ratio, pickleJarName)
     batchDic_unCluster[Xth_batch] = creatingXthBatch_unClustered(df, batch_size, Xth_batch)
     return batchDic_cluster, batchDic_unCluster
 
 
-def createTrainDf_clustered(df, batchDic_cluster, batchDic_unCluster, batch_size, NOofBatches, cluster_size, method, windowSize, ratio):
+def createTrainDf_clustered(df, batchDic_cluster, batchDic_unCluster, batch_size, NOofBatches, cluster_size, method, windowSize, ratio, pickleJarName):
     trainList = []
     startFrom = max(NOofBatches - windowSize, 1)
     for i in range(startFrom, NOofBatches+1):
         if i not in batchDic_cluster:
-            batchDic_cluster, _ = workOnBatchDics(df, batchDic_cluster, batchDic_unCluster, i, batch_size, cluster_size, method, ratio)
+            batchDic_cluster, _ = workOnBatchDics(df, batchDic_cluster, batchDic_unCluster, i, batch_size, cluster_size, method, ratio, pickleJarName)
         trainList.append(batchDic_cluster[i])
     trainSet = pd.concat(trainList)   
     trainSet = trainSet.reset_index(drop=True)
@@ -305,7 +305,7 @@ def cluster_DBSCAN(df, Xth_batch, clusters_per_batch):
     
     return df
 
-def cluster_ratingGPS_part1(curr_df, Xth_batch, clusters_per_batch):
+def cluster_ratingGPS_part1(curr_df, Xth_batch, clusters_per_batch, pickleJarName):
 
     print(f"--- Performing {Xth_batch}th batch clustering (spectral) ---")
     global_mean = curr_df.loc[:,'rating'].mean()
@@ -373,20 +373,22 @@ def cluster_ratingGPS_part1(curr_df, Xth_batch, clusters_per_batch):
         'Rsims':Rsims
         }
 
-    fileName = "./PickleJar/" +str(Xth_batch) + "thPart1Package.pkl"
+    pickleJarName
+    #fileName = "./PickleJar/" +str(Xth_batch) + "thPart1Package.pkl"
+    fileName = pickleJarName +str(Xth_batch) + "thPart1Package.pkl"
     with open(fileName, 'wb') as pDump:
         pickle.dump(part1Package, pDump)
 
     return part1Package
 
-def cluster_ratingGPS_part2(curr_df, Xth_batch, clusters_per_batch, ratio):
+def cluster_ratingGPS_part2(curr_df, Xth_batch, clusters_per_batch, ratio, pickleJarName):
 
-    fileName = "./PickleJar/" +str(Xth_batch) + "thPart1Package.pkl"
+    fileName = pickleJarName +str(Xth_batch) + "thPart1Package.pkl"
     if (os.path.exists(fileName)):
         with open(fileName, 'rb') as pDump:
             part1Package = pickle.load(pDump)
     else:
-        part1Package = cluster_ratingGPS_part1(curr_df, Xth_batch, clusters_per_batch) 
+        part1Package = cluster_ratingGPS_part1(curr_df, Xth_batch, clusters_per_batch, pickleJarName) 
     user1s = part1Package['user1s']
     user2s = part1Package['user2s']
     GPSsims = part1Package['GPSsims']
@@ -400,17 +402,17 @@ def cluster_ratingGPS_part2(curr_df, Xth_batch, clusters_per_batch, ratio):
                                  'sim': combinedSims 
                            })
     simMat = simMat.pivot( index='user_id_R', columns = 'user_id_C', values = 'sim') 
-    fileName = "./PickleJar/" +str(Xth_batch) + "thSimMat"+   "_ratio(" + str(ratio)  + ").pkl"
+    fileName = pickleJarName +str(Xth_batch) + "thSimMat"+   "_ratio(" + str(ratio)  + ").pkl"
     simMat.to_pickle(fileName)
     return simMat
     
-def cluster_ratingGPS_part3(curr_df, Xth_batch, clusters_per_batch, ratio):   
+def cluster_ratingGPS_part3(curr_df, Xth_batch, clusters_per_batch, ratio, pickleJarName):   
     #============================================== Finished Calculate Sims ==========================================
-    fileName = "./PickleJar/" +str(Xth_batch) + "thSimMat"+   "_ratio(" + str(ratio)  + ").pkl"
+    fileName = pickleJarName +str(Xth_batch) + "thSimMat"+   "_ratio(" + str(ratio)  + ").pkl"
     if (os.path.exists(fileName)):
         simMat = pd.read_pickle(fileName)
     else:
-        simMat = cluster_ratingGPS_part2(curr_df, Xth_batch, clusters_per_batch, ratio)    
+        simMat = cluster_ratingGPS_part2(curr_df, Xth_batch, clusters_per_batch, ratio, pickleJarName)    
     #print(simMat)
     simArray = np.array(simMat)
     num_clusters = clusters_per_batch
@@ -544,9 +546,9 @@ def furtherFilter(num_rating,df_train, df_trainOrignal, df_test):
     
 # In[614]:
 
-def prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster, batch_size, NOofBatches, cluster_size, method, windowSize, ratio):
+def prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster, batch_size, NOofBatches, cluster_size, method, windowSize, ratio, pickleJarName):
     print("Preparing training and testing datasets and objects ...")
-    df_train = createTrainDf_clustered(df, batchDic_cluster, batchDic_unCluster, batch_size, NOofBatches, cluster_size, method, windowSize, ratio)
+    df_train = createTrainDf_clustered(df, batchDic_cluster, batchDic_unCluster, batch_size, NOofBatches, cluster_size, method, windowSize, ratio, pickleJarName)
     df_test  = createTestDf(df, batchDic_unCluster, batch_size, NOofBatches+1) 
     df_trainOrignal = createTrainDf_unClustered(batchDic_unCluster, NOofBatches, windowSize) 
     # the original rating matrix is not imputed at this point
@@ -582,7 +584,7 @@ def batchRun(model, trainSet, originalDic, testSet, num_of_centroids,
 
 
 def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
-             batch_size, num_of_centroids, factors, POIsims, method, windowSize, ratio,
+             batch_size, num_of_centroids, factors, POIsims, method, windowSize, ratio, pickleJarName,
              maxEpochs = 40, Random = 6, mae = True, rmse = True):
     # if you need to see results, set mae or rmse to True
     # Randome is Random state 
@@ -616,7 +618,7 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
 
     for XthBatch in range(1, totalNOB+1):
         print(f"=================Starting the {XthBatch}th batch=================")
-        trainSet, testSet, originalDic = prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster,batch_size, XthBatch, cluster_size, method, windowSize, ratio)
+        trainSet, testSet, originalDic = prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster,batch_size, XthBatch, cluster_size, method, windowSize, ratio, pickleJarName)
         batchRun(model, trainSet, originalDic, testSet, num_of_centroids, factors, 
                  log, busSimMat, epochs = maxEpochs, random = Random, MAE = mae, RMSE = rmse )
     log.close

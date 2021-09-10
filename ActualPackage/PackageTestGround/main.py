@@ -9,25 +9,31 @@ import ActualPackage.functions.methods as functions
 
 def main_vanilla():
     model = vanila.GBRS_vanilla
-    fileName = "UC.csv"
+    #fileName = "UC.csv"
+    fileName = "Phoenix.csv"
     startYear = 2007
     min_NO_rating = 9999999999   # total is 576065, filtering is too slow because of the matrix being too large.
-    batch_size = 900    
+    #batch_size = 900
+    batch_size = 1000    
     cluster_size = 6      #clusters per batch
-    totalNOB = 33           #number of Batch, not including the test batch
+    #totalNOB = 33           #number of Batch, not including the test batch
+    totalNOB = 576
     factors = 3
-    num_of_centroids = 7
+    num_of_centroids = 9
     POIsims = 0
     windowSize = 1
     method = 'spectral_ratingGPS' # kmean, spectral_ratingGPS, spectral_pure, cluster_DBSCAN, cluster_FCM
-    ratio = 0 # this parameter only is used when  the method =  'spectral_ratingGPS'
+    ratio = 1 # this parameter only is used when  the method =  'spectral_ratingGPS'
+    pickleJarName = "./PickleJar_Phoenix/" #"./PickleJar/"
 
     #methods = ['kmean', 'spectral_ratingGPS', 'spectral_pure', 'cluster_DBSCAN', 'cluster_FCM']
     #for i in range(1,34):
         #windowSize = i
+    for i in range(11):
+        ratio = i * 0.1
     functions.totalRun(model, fileName, startYear, min_NO_rating,
                        totalNOB, cluster_size, batch_size, num_of_centroids, 
-                       factors, POIsims, method, windowSize, ratio)
+                       factors, POIsims, method, windowSize, ratio, pickleJarName)
 #0-5: 1.3619   5-10: 1.3775  10-15: 1.3568 15-20: 1.3541  20-25: RMSE: 1.3812
 def main_POIsims():
     
@@ -44,10 +50,11 @@ def main_POIsims():
     method = 'kmean'
     windowSize = 2
     ratio = 0.5 # this parameter only is used when  the method =  'spectral_ratingGPS'
+    pickleJarName = "./PickleJar/"
     
     functions.totalRun(model, fileName, startYear, min_NO_rating, 
                        totalNOB, cluster_size, batch_size, num_of_centroids, 
-                       factors, POIsims, method, windowSize, ratio)
+                       factors, POIsims, method, windowSize, ratio, pickleJarName)
     
 
 #def main_
