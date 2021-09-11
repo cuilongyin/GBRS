@@ -278,7 +278,7 @@ class GBRS_vanilla(AlgoBase):
 
          #==============================method 3==========================
         #change to weighted average might be better, try change this part.
-        if self.num_predicted%100 == 0:
+        if self.num_predicted%10 == 0:
             print(f"Have finisehd predicting {self.num_predicted} ratings..." )
         #print( f" user: {u} item: { self.trainset.to_raw_iid(i)}  est = {rating_vec[i]})" )
         #print( f" Gratings = {groupRatings} ")

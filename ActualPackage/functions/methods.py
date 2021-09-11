@@ -562,7 +562,7 @@ def prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster, batch_size, NOo
     if len(df_train.index) <=1 or len(df_test.index) <=1 or len(df_trainOrignal) <=1:
         raise Exception("One of the dataframe is too small, check the test df first.")
     
-    df_train, df_trainOrignal, df_test  = furtherFilter(4,df_train, df_trainOrignal, df_test)
+    df_train, df_trainOrignal, df_test  = furtherFilter(2,df_train, df_trainOrignal, df_test)
     #df_trainOrignal = columnImpute(df_trainOrignal)
  
     trainSet, testSet, originalTrainSet = readDataFrame(df_train,df_test,df_trainOrignal)
