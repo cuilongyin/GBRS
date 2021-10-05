@@ -1,37 +1,38 @@
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../")
-import ActualPackage.models.vanilla as vanila
-import ActualPackage.models.POIsims as POI
+#import ActualPackage.models.vanilla as vanila
+#import ActualPackage.models.POIsims as POI
+import ActualPackage.models.SVD as SVD
+import ActualPackage.models.SVD_POIsims as SVD_POIsims
 import ActualPackage.functions.methods as functions
-
-
 
 def main_vanilla():
     model = vanila.GBRS_vanilla
-    #fileName = "UC.csv"
-    fileName = "Phoenix.csv"
+    fileName = "UC.csv"
+    #fileName = "Phoenix.csv"
     startYear = 2007
     min_NO_rating = 9999999999   # total is 576065, filtering is too slow because of the matrix being too large.
-    #batch_size = 900
-    batch_size = 1000    
+    batch_size = 900
+    #batch_size = 1000    
     cluster_size = 6      #clusters per batch
-    #totalNOB = 33           #number of Batch, not including the test batch
-    totalNOB = 192
+    totalNOB = 33           #number of Batch, not including the test batch
+    #totalNOB = 192
     factors = 3
     num_of_centroids = 9
     POIsims = 0
     windowSize = 1
     method = 'spectral_ratingGPS' # kmean, spectral_ratingGPS, spectral_pure, cluster_DBSCAN, cluster_FCM
-    ratio = 0 # this parameter only is used when  the method =  'spectral_ratingGPS'
-    pickleJarName = "./PickleJar_Phoenix/" #"./PickleJar/"
+    ratio = 1 # this parameter only is used when  the method =  'spectral_ratingGPS'
+    #pickleJarName = "./PickleJar_Phoenix/" #"./PickleJar/"
+    pickleJarName = "./PickleJar/"
 
     #methods = ['kmean', 'spectral_ratingGPS', 'spectral_pure', 'cluster_DBSCAN', 'cluster_FCM']
     #for i in range(1,34):
         #windowSize = i
-    for i in range(11):
-        ratio = i * 0.1
-        functions.totalRun(model, fileName, startYear, min_NO_rating,
+    #for i in range(11):
+        #ratio = i * 0.1
+    functions.totalRun(model, fileName, startYear, min_NO_rating,
                        totalNOB, cluster_size, batch_size, num_of_centroids, 
                        factors, POIsims, method, windowSize, ratio, pickleJarName)
 #0-5: 1.3619   5-10: 1.3775  10-15: 1.3568 15-20: 1.3541  20-25: RMSE: 1.3812
@@ -45,22 +46,52 @@ def main_POIsims():
     cluster_size = 6      #clusters per batch
     totalNOB = 33           #number of Batch, not including the test batch
     factors = 3
-    num_of_centroids = 6
+    num_of_centroids = 9
     POIsims = 1
-    method = 'kmean'
-    windowSize = 2
-    ratio = 0.5 # this parameter only is used when  the method =  'spectral_ratingGPS'
+    method = 'spectral_ratingGPS'
+    windowSize = 1
+    ratio = 1 # this parameter only is used when  the method =  'spectral_ratingGPS'
     pickleJarName = "./PickleJar/"
     
     functions.totalRun(model, fileName, startYear, min_NO_rating, 
                        totalNOB, cluster_size, batch_size, num_of_centroids, 
                        factors, POIsims, method, windowSize, ratio, pickleJarName)
     
+def main_SVD():
+    model = SVD
+    fileName = "UC.csv"
+    #fileName = "Phoenix.csv"
+    startYear = 2007
+    min_NO_rating = 9999999999   # total is 576065, filtering is too slow because of the matrix being too large.
+    batch_size = 900
+    totalNOB = 33           #number of Batch, not including the test batch
+    factors = 3
+    windowSize = 1
+    POIsims = 0
+    functions.originalRun(model, fileName, startYear, min_NO_rating,
+                       totalNOB,  batch_size,  factors,  POIsims, windowSize)
 
-#def main_
+def main_SVD_POIsims():
+    model = SVD_POIsims
+
+    fileName = "UC.csv"
+    #fileName = "Phoenix.csv"
+    startYear = 2007
+    min_NO_rating = 9999999999   # total is 576065, filtering is too slow because of the matrix being too large.
+    batch_size = 900
+    totalNOB = 33           #number of Batch, not including the test batch
+    factors = 3
+    windowSize = 1
+    POIsims = 1
+
+    functions.originalRun(model, fileName, startYear, min_NO_rating,
+                       totalNOB,  batch_size,  factors, POIsims, windowSize)
+
 if __name__ == "__main__":
-    main_vanilla()
+    #main_vanilla()
     #main_POIsims()
+    main_SVD()
+    #main_SVD_POIsims()
 
 
 #  GBRS, GBRS + review

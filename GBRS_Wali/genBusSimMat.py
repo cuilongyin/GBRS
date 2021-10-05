@@ -60,7 +60,6 @@ def toFloat(aStringSeries):
         aFloatList.append(float(each))
     return aFloatList
 
-
 def originalGenFunc(fileName):
     df = createPandasDataFrame(fileName)
     result = defaultdict()
@@ -148,15 +147,11 @@ def find_neighbors(raw_id, simMat, n_neighbors):
     
     return rankedPOIs
 
-
 def cal_sum_sij(iNeighbors):
     _sum = 0
     for eachNeighbor in iNeighbors:
         _sum += eachNeighbor[1]
     return _sum
-
-
-
 
 #fileName = "aggregatedVectors.csv"
 fileName = "Urbana_Champaign_AggVector.csv"

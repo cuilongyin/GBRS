@@ -2,6 +2,7 @@ import csv
 import os 
 import sys
 import gensim
+import pandas as pd
 #from scipy import spatial
 #from nltk.tokenize import word_tokenize
 from callback import EpochLogger
@@ -76,13 +77,14 @@ def writeVector(readFrom, writeTo, dir_stopW, modelName):
             lineN += 1
             uid    = row[0]
             iid    = row[1]
+            rating = row[2]
             if lineN % 100 == 0:
                 print(f"writing line {lineN}...")
             vector = model.infer_vector(tokenize(row[4], stopwords))
             length = len(gensim.utils.simple_preprocess(row[4], max_len=200))
-            line = [uid,iid,length,vector]
-            writer.writerow(line)
-    
+            
+            line = [uid,iid,length,vector,rating]
+            writer.writerow(line)   
 def train(dir_read, dir_stopW, max_epochs, vec_size):
     
     tagged_data = genTrainset(dir_read, dir_stopW)
@@ -112,10 +114,19 @@ def train(dir_read, dir_stopW, max_epochs, vec_size):
         # fix the learning rate, no decay
         #model.min_alpha = model.alpha
         
-    model.save("D2V.model")
+    model.save("D2V_vectorSize1.model")
 #traninig==========================================
-#train(dir_read, dir_stopW, 40, 30)
 
+def toFloat(aStringSeries):
+    aFloatList = []
+    if not isinstance(aStringSeries, str):
+        aStringList = aStringSeries
+        aStringList = aStringSeries[0][1:-1].split(',')
+    else:
+        aStringList = aStringSeries[1:-1].split(',')
+    for each in aStringList:
+        aFloatList.append(float(each))
+    return aFloatList
 
 #writeVector2 is a function that converts aggregated comments into vectors. The comments are from all users. 
 def writeVector2(readFrom, writeTo, dir_stopW, modelName):
@@ -142,16 +153,43 @@ def writeVector2(readFrom, writeTo, dir_stopW, modelName):
             line = [iid,vector]
             writer.writerow(line)
 
+def POIavgRatings(filewithRating,fileWithoutRating):
+    df = pd.read_csv(filewithRating)  
+    #print(df)
+    new_df = df.groupby('bus_id', as_index=False)['rating'].mean()
+    #print(new_df)
+    #print("123")
+    aggVec_df = pd.read_csv(fileWithoutRating)
+    #print(aggVec_df)
+    #df.assign(user_id=outputIdList)
+    aggVec_df['avgRatings'] = new_df["rating"].values
+    x= toFloat(aggVec_df.vector[0])
+    print(x)
+    print(type(x))  
+    #with open(filewithRating, 'r', newline = '', encoding = 'ISO-8859-1') as readfile: 
+    
+        #open(writeTo,'w', newline = '', encoding='utf-8') as writefile:
+        #reader = csv.reader(readfile)
+        #writer = csv.writer(writefile, sys.stdout, lineterminator = '\n')
+        #writer.writerow(['bus_id', 'vector'] )
+        #next(reader)
+        #for row in reader:
+            #rating = row[2] 
+
 
 dir_read  = os.path.dirname(os.path.realpath(__file__)) + "\\processedFile.csv"
 dir_stopW = os.path.dirname(os.path.realpath(__file__)) + "\\stopWords.txt"
-#readFrom  = os.path.dirname(os.path.realpath(__file__)) + "\\Urbana_Champaign_Comments.csv"
+readFrom  = os.path.dirname(os.path.realpath(__file__)) + "\\Urbana_Champaign_Comments.csv"
 #writeTo   = os.path.dirname(os.path.realpath(__file__)) + "\\Urbana_Champaign_Vectors_test.csv"
-readFrom  = os.path.dirname(os.path.realpath(__file__)) + "\\Urbana_Champaign_BusAggCom.csv"
+#readFrom  = os.path.dirname(os.path.realpath(__file__)) + "\\Urbana_Champaign_BusAggCom.csv"
 writeTo   = os.path.dirname(os.path.realpath(__file__)) + "\\Urbana_Champaign_AggVector.csv"
+#writeTo   = os.path.dirname(os.path.realpath(__file__)) + "\\Urbana_Champaign_Vectors(1Entry).csv"
 
 
-modelName = 'C:\\Users\\cuilo\\Desktop\\Git_Hub_Repo\\GBRS\\GBRS_Wali\\D2V.model'
+#modelName = 'C:\\Users\\cuilo\\Desktop\\Git_Hub_Repo\\GBRS\\GBRS_Wali\\D2V.model'
+#modelName = 'C:\\Users\\cuilo\\Desktop\\Git_Hub_Repo\\GBRS\\GBRS_Wali\\D2V_vectorSize1.model'
 #infering==========================================
 #model = gensim.models.doc2vec.Doc2Vec.load(fileName)
-writeVector2(readFrom, writeTo, dir_stopW, modelName)
+#writeToFilewriteVector(readFrom, writeTo, dir_stopW, modelName)
+#train(dir_read, dir_stopW, 40, 1)
+POIavgRatings(readFrom,writeTo)

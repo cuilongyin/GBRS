@@ -7,12 +7,14 @@ from numpy.linalg import norm
 from surprise.utils import get_rng
 from collections import defaultdict
 from surprise import PredictionImpossible
-
+from collections import defaultdict
+from numpy import dot
+from numpy.linalg import norm
 
 # In[595]:
 class GBRS_POIsims(AlgoBase):
 
-    def __init__(self, busSimMat, n_factors=100, n_epochs=20, biased=True, init_mean=0,
+    def __init__(self, n_factors=100, n_epochs=20, biased=True, init_mean=0,
                  init_std_dev=.1, lr_all=.005,
                  reg_all=.02, lr_bu=None, lr_bi=None, lr_pu=None,
                  lr_qi=None,
@@ -20,7 +22,7 @@ class GBRS_POIsims(AlgoBase):
                  reg_qi=None,
                  reg_qj=None,
                  random_state=None, verbose=False, originalDic=None,
-                 numCtds = None):
+                 numCtds = None, busSimMat = None):
                 # modify reg_qi 
                 # modify reg_qj
                 # modify lr_qi
@@ -115,6 +117,10 @@ class GBRS_POIsims(AlgoBase):
         self.bi = bi
         self.pu = pu
         self.qi = qi
+
+        #qiT = np.transpose(qi)
+        #product = np.matmul(pu,qiT)
+        #np.savetxt("mtx2.csv", product, delimiter=",")
         print("Done ...")
 
     def impute_train(self, u, i):
@@ -145,14 +151,14 @@ class GBRS_POIsims(AlgoBase):
     def estimateCentroidRating(self, u, i ):
         #ratings is a list containing all ratings from one group
         #[(item,rating),(item,rating),(item,rating),(item,rating) ...]
-        ratings =  self.trainset.ur[u]
-        filtered = filter(lambda x : x[0] == i, ratings)
-        target = list(filtered)
+        #ratings =  self.trainset.ur[u]
+        #filtered = filter(lambda x : x[0] == i, ratings)
+        #target = list(filtered)
     
-        if len(target) == 0: # if the rating is there, return it, or impute it.
-            return self.impute_train(u, i)
-        else:
-            return target[0][1]
+        #if len(target) == 0: # if the rating is there, return it, or impute it.
+            #return self.impute_train(u, i)
+        #else:
+        return self.impute_train(u, i)
         
 
     def imputeCentroidRatingMat(self):    # complete the centroids'rating matrix
@@ -174,30 +180,29 @@ class GBRS_POIsims(AlgoBase):
         #it is easy to debug this way
         var1 = dot(vec1, vec2)
         var2 = (norm(vec1)*norm(vec2))
-        result = var1/var2
-        return result
+        return var1/var2
 
-    
     def findMostSimilars(self, user):
         centroids = []
         sims  = []
-                        #(item, rating)
+
         userRatingVec = [ x[1] for x in self.originalDic[user]]
         itemVec   = [ self.trainset.to_inner_iid(x[0]) for x in self.originalDic[user] ]
 
         for eachGroup in list(self.trainset.all_users()):
-            groupRatingVec = []
-            groupItemRatingVec = self.centroidRatingDic[eachGroup] # [list of ratings] --> [list of (item, rating)]
-            for item_rating in groupItemRatingVec:
-                if item_rating[0] in itemVec:
-                    groupRatingVec.append(item_rating[1])
+            groupItemRatingVec = self.centroidRatingDic[eachGroup]
+            groupRatingVec = [
+                item_rating[1]
+                for item_rating in groupItemRatingVec
+                if item_rating[0] in itemVec
+            ]
             sim = self.computeCosine(userRatingVec, groupRatingVec)
             sims.append(sim)
             centroids.append(eachGroup)
-        sorted_centroids = [ctd for sims, ctd in sorted(zip(sims, centroids),key=lambda pair: pair[0])]
-        sorted_sims      = [sims for sims, ctd in sorted(zip(sims, centroids),key=lambda pair: pair[0])] # debug here
+        sorted_centroids = [ctd  for sims, ctd in sorted(zip(sims, centroids),key=lambda pair: pair[0], reverse = True)]
+        sorted_sims      = [sims for sims, ctd in sorted(zip(sims, centroids),key=lambda pair: pair[0], reverse = True)]
         return sorted_centroids[:self.num_centroids], sorted_sims[:self.num_centroids]
-    
+
     def computeSimMatrix(self): # for each group, 
         print("Strat calculating sim ....") 
         original_dic_complete = self.originalDic  
@@ -247,25 +252,30 @@ class GBRS_POIsims(AlgoBase):
 
         (rankedCtd, correspondingSims) = self.simDic[u]
         
-        vecList = []
-        for eachCtd in rankedCtd:
-            vecList.append(np.array([x[1] for x in self.centroidRatingDic[eachCtd]]))
+        #vecList = []
+        #for eachCtd in rankedCtd:
+            #vecList.append(np.array([x[1] for x in self.centroidRatingDic[eachCtd]]))
         #===============================================================
-        SUM = 0 * vecList[0]
+        #SUM = 0 * vecList[0]
 
-        for index in range(len(correspondingSims)):
-            SUM = SUM + correspondingSims[index] * vecList[index]
+        #for index in range(len(correspondingSims)):
+            #SUM = SUM + correspondingSims[index] * vecList[index]
 
-        rating_vec = SUM/sum(correspondingSims)
+        #rating_vec = SUM/sum(correspondingSims)
         
-        groupRatings = []
-        for index in range(len(vecList)):
-            groupRatings .append(vecList[index][i])
+        #groupRatings = []
+        #for index in range(len(vecList)):
+            #groupRatings .append(vecList[index][i])
         #===============================================================
         #change to weighted average might be better, try change this part.
-        if self.num_predicted%100 == 0:
+        
+        #print( f" user: {u} item: { self.trainset.to_raw_iid(i)}  est = {rating_vec[i]}  all the group ratings are {groupRatings} ")
+        rList = [] # the ratings from all the same item
+        for eachCtd in rankedCtd:
+            rList.append(self.centroidRatingDic[eachCtd][i][1])
+        result = np.dot(rList, correspondingSims)/sum(correspondingSims)
+        if self.num_predicted%10 == 0:
             print(f"Have finisehd predicting {self.num_predicted} ratings..." )
-        print( f" user: {u} item: { self.trainset.to_raw_iid(i)}  est = {rating_vec[i]}  all the group ratings are {groupRatings} ")
-        return rating_vec[i]
+        return result
         #return sum(rating_vec)/len(rating_vec)
 

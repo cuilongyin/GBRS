@@ -140,7 +140,8 @@ def createTrainDf_clustered(df, batchDic_cluster, batchDic_unCluster, batch_size
     startFrom = max(NOofBatches - windowSize, 1)
     for i in range(startFrom, NOofBatches+1):
         if i not in batchDic_cluster:
-            batchDic_cluster, _ = workOnBatchDics(df, batchDic_cluster, batchDic_unCluster, i, batch_size, cluster_size, method, ratio, pickleJarName)
+            batchDic_cluster, batchDic_unCluster = workOnBatchDics(df, batchDic_cluster, batchDic_unCluster, i, batch_size, cluster_size, method, ratio, pickleJarName)
+            #print(batchDic_unCluster[1].bus_id)
         trainList.append(batchDic_cluster[i])
     trainSet = pd.concat(trainList)   
     trainSet = trainSet.reset_index(drop=True)
@@ -154,7 +155,8 @@ def createTrainDf_unClustered(batchDic_unCluster, NOofBatches, windowSize):
 
     startFrom = max(NOofBatches - windowSize, 1)
     trainList = [batchDic_unCluster[i] for i in range(startFrom, NOofBatches+1)]
-    
+    #for x in trainList:
+    #print(trainList[0])
     return pd.concat(trainList)
 
 
@@ -416,8 +418,10 @@ def cluster_ratingGPS_part3(curr_df, Xth_batch, clusters_per_batch, ratio, pickl
     #print(simMat)
     simArray = np.array(simMat)
     num_clusters = clusters_per_batch
+    
     sc = SpectralClustering(num_clusters, affinity='precomputed')
     sc.fit(simArray)
+    
     #================================================ Finished Clustering ==============================================
 
     groupIDs = [eachLabel + Xth_batch* 1000000 for eachLabel in sc.labels_]
@@ -453,21 +457,28 @@ def readDataFrame(df_train, df_test, df_trainOrignal): # to generate train/test 
     trainSet = rawTrainSet.build_full_trainset()
     _, testSet = train_test_split(rawTestSet, test_size=1.0, random_state=1)
     _, originalTrainset = train_test_split(rawTrainOriginal, test_size=1.0, random_state=1)
-    return trainSet, testSet, originalTrainset
+    trainSetForNonPrivacy = rawTrainOriginal.build_full_trainset()
+    return trainSet, testSet, originalTrainset, trainSetForNonPrivacy
 
 
 # In[611]:
 
 
-def train(model, trainSet, factors, epochs, random , originalDic, num_of_centroids, busSimMat):
+def train(model, trainSet, factors, epochs, random , originalDic, num_of_centroids, busSimMat, privacy):
     print("Start training ...")
     
-    if busSimMat != None:
-        Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, originalDic = originalDic,
-                           numCtds = num_of_centroids, busSimMat = busSimMat, verbose = False)
+    if privacy == 0:
+        if busSimMat != None:
+            Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, verbose = False, busSimMat = busSimMat)
+        else:
+            Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, verbose = False)
     else:
-        Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, originalDic = originalDic,
-                           numCtds = num_of_centroids, verbose = False)
+        if busSimMat != None:
+            Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, originalDic = originalDic,
+                            numCtds = num_of_centroids, busSimMat = busSimMat, verbose = False)
+        else:
+            Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, originalDic = originalDic,
+                            numCtds = num_of_centroids, verbose = False)
     Algorithm.fit(trainSet)
     print("Done ...")
     return Algorithm
@@ -532,9 +543,11 @@ def furtherFilter(num_rating,df_train, df_trainOrignal, df_test):
     #Also, you need to keep the number of items the same in original data and in clustered data. 
     # so the number of ratings and the position of ratings can match.
     
-    for item in df_train['bus_id'].drop_duplicates():
-        if len(df_trainOrignal.loc[df_trainOrignal["bus_id"] == item]) == 0:
-            df_train = df_train.drop(df_train[df_train.bus_id == item].index)     
+    #for item in df_train['bus_id'].drop_duplicates():
+        #print(item)
+        #if len(df_trainOrignal.loc[df_trainOrignal["bus_id"] == item]) == 0:
+            #print(item, "!@#!@#")
+            #df_train = df_train.drop(df_train[df_train.bus_id == item].index)     
         
     for item in df_test['bus_id'].drop_duplicates():
         if len(df_trainOrignal.loc[df_trainOrignal["bus_id"] == item]) == 0:
@@ -561,22 +574,21 @@ def prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster, batch_size, NOo
     #print(f"there are {len(df_trainOrignal['bus_id'].drop_duplicates())} items in original" )      
     if len(df_train.index) <=1 or len(df_test.index) <=1 or len(df_trainOrignal) <=1:
         raise Exception("One of the dataframe is too small, check the test df first.")
-    
     df_train, df_trainOrignal, df_test  = furtherFilter(2,df_train, df_trainOrignal, df_test)
     #df_trainOrignal = columnImpute(df_trainOrignal)
  
-    trainSet, testSet, originalTrainSet = readDataFrame(df_train,df_test,df_trainOrignal)
+    trainSet, testSet, originalTrainSet, trainSetForNonPrivacy = readDataFrame(df_train,df_test,df_trainOrignal)
     OriginalDic = originalTrainListToDic(originalTrainSet)
     print("Done ...")
-    return trainSet, testSet, OriginalDic 
+    return trainSet, testSet, OriginalDic, trainSetForNonPrivacy
     
     
 # In[616]:
 
 def batchRun(model, trainSet, originalDic, testSet, num_of_centroids,
-             factors, log, busSimMat, epochs = 40, random = 6, MAE = 1, RMSE = 1 ):
+             factors, log, busSimMat, privacy, epochs = 40, random = 6, MAE = 1, RMSE = 1 ):
 
-    trainedModel = train(model, trainSet, factors, epochs, random, originalDic, num_of_centroids, busSimMat = busSimMat)
+    trainedModel = train(model, trainSet, factors, epochs, random, originalDic, num_of_centroids, busSimMat = busSimMat, privacy = privacy)
     test(trainedModel, testSet, log, mae = MAE, rmse = RMSE)
 
 
@@ -618,7 +630,42 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
 
     for XthBatch in range(1, totalNOB+1):
         print(f"=================Starting the {XthBatch}th batch=================")
-        trainSet, testSet, originalDic = prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster,batch_size, XthBatch, cluster_size, method, windowSize, ratio, pickleJarName)
+        trainSet, testSet, originalDic, _ = prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster,batch_size, XthBatch, cluster_size, method, windowSize, ratio, pickleJarName)
         batchRun(model, trainSet, originalDic, testSet, num_of_centroids, factors, 
-                 log, busSimMat, epochs = maxEpochs, random = Random, MAE = mae, RMSE = rmse )
+                 log, busSimMat, privacy = 1, epochs = maxEpochs, random = Random, MAE = mae, RMSE = rmse )
+    log.close
+
+
+def originalRun(model, fileName, startYear, min_NO_rating, totalNOB,  batch_size,  factors,  POIsims, windowSize,
+                maxEpochs = 40, Random = 6, mae = True, rmse = True):
+    if platform.system() == 'Windows':
+            filePrefix  = os.path.dirname(os.path.realpath(__file__)) + "\\..\\resultDumpster\\" 
+    else:
+        filePrefix  = os.path.dirname(os.path.realpath(__file__)) + "/../PackageTestGround/Result/" 
+        
+    output = filePrefix + 'SVD' + '-NOB('      + str(totalNOB)  +')'\
+                                 + '-WS('      + str(windowSize) +')'\
+                                 + '-time('    + str(int(time.time())) + ')'\
+                                 + '.csv'
+
+    log = open(output, 'w')
+    log.write('RMSE, MAE\n')
+    df = prepareDf(fileName, startYear, min_NO_rating)
+
+    if POIsims == True:
+        matFilePath = os.path.abspath(__file__+"/../../PackageTestGround" + "/simMat_new.bin") 
+        with open(matFilePath, 'rb') as handle:
+            busSimMat = pickle.load(handle)
+
+    else:
+        print("NO SIM FILES !!!")
+        busSimMat = None
+    batchDic_cluster = defaultdict()
+    batchDic_unCluster = defaultdict()
+    #print(busSimMat)
+    for XthBatch in range(1, totalNOB+1):
+        print(f"=================Starting the {XthBatch}th batch=================")
+        _, testSet, _, originalTrainSet = prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster,batch_size, XthBatch, 0, None, windowSize, None, None)
+        batchRun(model, originalTrainSet, None, testSet,  0, factors, log, busSimMat,
+                privacy =0, epochs = maxEpochs, random = Random, MAE = mae, RMSE = rmse )
     log.close
