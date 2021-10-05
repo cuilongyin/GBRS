@@ -5,17 +5,17 @@ from surprise.utils import get_rng
 from surprise import PredictionImpossible
 from collections import defaultdict
 from numpy import dot
-import operator
 from numpy.linalg import norm
 class GBRS_vanilla(AlgoBase):
-    
+
     def __init__(self, n_factors=100, n_epochs=20, biased=True, init_mean=0,
                  init_std_dev=.1, lr_all=.005,
-                 reg_all=.02, lr_bu=None, lr_bi=None, lr_pu=None, lr_qi=None,
-                 reg_bu=None, reg_bi=None, reg_pu=None, reg_qi=None,
+                 reg_all=.02, lr_bu=None, lr_bi=None, lr_pu=None,
+                 lr_qi=None,
+                 reg_bu=None, reg_bi=None, reg_pu=None, 
+                 reg_qi=None,
                  random_state=None, verbose=False, originalDic=None,
                  numCtds = None, busSimMat = None):
-
         self.n_factors = n_factors
         self.n_epochs = n_epochs
         self.biased = biased
@@ -38,7 +38,7 @@ class GBRS_vanilla(AlgoBase):
         self.num_predicted = 0      
         self.num_centroids = numCtds
         self.busSimMat = busSimMat
-        
+        self.biased = False
         AlgoBase.__init__(self)
 
     def fit(self, trainset):
@@ -50,8 +50,8 @@ class GBRS_vanilla(AlgoBase):
 
     def sgd(self, trainset):
         print("Strat sgd ...")
+        print(trainset.n_users)
         rng = get_rng(self.random_state)
-
         bu = np.zeros(trainset.n_users, np.double)
         bi = np.zeros(trainset.n_items, np.double)
         pu = rng.normal(self.init_mean, self.init_std_dev,
@@ -60,11 +60,11 @@ class GBRS_vanilla(AlgoBase):
                         (trainset.n_items, self.n_factors))
  
         global_mean = self.trainset.global_mean
+        #global_mean = 1
         if not self.biased:
             global_mean = 0
 
         for current_epoch in range(self.n_epochs):
-            n = 0
             if self.verbose:
                 print("Processing epoch {}".format(current_epoch))
             for u, i, r in trainset.all_ratings():
@@ -89,11 +89,15 @@ class GBRS_vanilla(AlgoBase):
                     #qi[i,f] += self.lr_qi * (err * puf - (self.reg_qi + self.reg_qi2 (sum (s[i]))\
                                                           #+self.reg_qi2 (sum(s[i][j]*qj)) )
                                                           # s dic of dic
-                n += 1
         self.bu = bu
         self.bi = bi
         self.pu = pu
         self.qi = qi
+
+        #qiT = np.transpose(qi)
+        #product = np.matmul(pu,qiT)
+        #np.savetxt("mtx1.csv", product, delimiter=",")
+
         print("Done ...")
 
     def impute_train(self, u, i):
@@ -103,7 +107,7 @@ class GBRS_vanilla(AlgoBase):
 
         if self.biased:
             est = self.trainset.global_mean
-
+            #est = 1
             if known_user:
                 est += self.bu[u]
 
@@ -118,9 +122,13 @@ class GBRS_vanilla(AlgoBase):
                 est = np.dot(self.qi[i], self.pu[u])
             else:
                 raise PredictionImpossible('User and item are unknown.')
-
+        qiT = np.transpose(self.qi)
+        product = np.matmul(self.pu,qiT)
+        #print(product)
+        #np.savetxt("mtx1.csv", product, delimiter=",")
+        
         return est   
-    
+
     def estimateCentroidRating(self, u, i ):
         #ratings is a list containing all ratings from one group
         #[(item,rating),(item,rating),(item,rating),(item,rating) ...]
@@ -147,6 +155,8 @@ class GBRS_vanilla(AlgoBase):
                 else:
                     self.centroidRatingDic[user] = []
                     self.centroidRatingDic[user].append((item, self.estimateCentroidRating(user,item)))
+        #print(self.bu, self.bi)
+        #print(self.centroidRatingDic)
         return self
     
     
@@ -180,8 +190,7 @@ class GBRS_vanilla(AlgoBase):
         #RMSE: 1.3388
         #MAE:  1.0544
         return sorted_centroids[:self.num_centroids], sorted_sims[:self.num_centroids]
-        
-    
+
     def computeSimMatrix(self): # for each group, 
         print("Strat calculating sim ....") 
         original_dic_complete = self.originalDic  
