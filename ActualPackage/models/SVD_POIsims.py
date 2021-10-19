@@ -8,9 +8,9 @@ from collections import defaultdict
 
 class SVD_POIsims(AlgoBase):
 
-    def __init__(self, n_factors=100, n_epochs=20, biased=False, init_mean=0,
-                 init_std_dev=.1, lr_all=.005,
-                 reg_all=.02, lr_bu=None, lr_bi=None, lr_pu=None,
+    def __init__(self, n_factors=40, n_epochs=200, biased=False, init_mean=0,
+                 init_std_dev=.1, lr_all=.01,
+                 reg_all=.5, lr_bu=None, lr_bi=None, lr_pu=None,
                  lr_qi=None,
                  reg_bu=None, reg_bi=None, reg_pu=None, 
                  reg_qi=None, reg_qj=None,

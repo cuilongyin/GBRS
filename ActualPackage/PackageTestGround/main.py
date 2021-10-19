@@ -65,7 +65,7 @@ def main_SVD():
     min_NO_rating = 9999999999   # total is 576065, filtering is too slow because of the matrix being too large.
     batch_size = 900
     totalNOB = 33           #number of Batch, not including the test batch
-    factors = 3
+    factors = 1
     windowSize = 1
     POIsims = 0
     functions.originalRun(model, fileName, startYear, min_NO_rating,
@@ -80,7 +80,7 @@ def main_SVD_POIsims():
     min_NO_rating = 9999999999   # total is 576065, filtering is too slow because of the matrix being too large.
     batch_size = 900
     totalNOB = 33           #number of Batch, not including the test batch
-    factors = 3
+    factors = 1
     windowSize = 1
     POIsims = 1
 
@@ -90,8 +90,8 @@ def main_SVD_POIsims():
 if __name__ == "__main__":
     #main_vanilla()
     #main_POIsims()
-    main_SVD()
-    #main_SVD_POIsims()
+    #main_SVD()
+    main_SVD_POIsims()
 
 
 #  GBRS, GBRS + review

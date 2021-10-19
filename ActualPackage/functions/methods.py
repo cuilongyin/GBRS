@@ -464,20 +464,20 @@ def readDataFrame(df_train, df_test, df_trainOrignal): # to generate train/test 
 # In[611]:
 
 
-def train(model, trainSet, factors, epochs, random , originalDic, num_of_centroids, busSimMat, privacy):
+def train(model, trainSet, factors, random , originalDic, num_of_centroids, busSimMat, privacy):
     print("Start training ...")
     
     if privacy == 0:
         if busSimMat != None:
-            Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, verbose = False, busSimMat = busSimMat)
+            Algorithm = model( n_factors=factors,  random_state=random, verbose = False, busSimMat = busSimMat)
         else:
-            Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, verbose = False)
+            Algorithm = model( n_factors=factors,  random_state=random, verbose = False)
     else:
         if busSimMat != None:
-            Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, originalDic = originalDic,
+            Algorithm = model( n_factors=factors, random_state=random, originalDic = originalDic,
                             numCtds = num_of_centroids, busSimMat = busSimMat, verbose = False)
         else:
-            Algorithm = model( n_factors=factors, n_epochs=epochs, random_state=random, originalDic = originalDic,
+            Algorithm = model( n_factors=factors, random_state=random, originalDic = originalDic,
                             numCtds = num_of_centroids, verbose = False)
     Algorithm.fit(trainSet)
     print("Done ...")
@@ -586,9 +586,9 @@ def prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster, batch_size, NOo
 # In[616]:
 
 def batchRun(model, trainSet, originalDic, testSet, num_of_centroids,
-             factors, log, busSimMat, privacy, epochs = 40, random = 6, MAE = 1, RMSE = 1 ):
-
-    trainedModel = train(model, trainSet, factors, epochs, random, originalDic, num_of_centroids, busSimMat = busSimMat, privacy = privacy)
+             factors, log, busSimMat, privacy, random = 6, MAE = 1, RMSE = 1 ):
+                   
+    trainedModel = train(model, trainSet, factors, random, originalDic, num_of_centroids, busSimMat = busSimMat, privacy = privacy)
     test(trainedModel, testSet, log, mae = MAE, rmse = RMSE)
 
 
@@ -597,7 +597,7 @@ def batchRun(model, trainSet, originalDic, testSet, num_of_centroids,
 
 def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
              batch_size, num_of_centroids, factors, POIsims, method, windowSize, ratio, pickleJarName,
-             maxEpochs = 40, Random = 6, mae = True, rmse = True):
+             Random = 6, mae = True, rmse = True):
     # if you need to see results, set mae or rmse to True
     # Randome is Random state 
     if platform.system() == 'Windows':
@@ -632,12 +632,12 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
         print(f"=================Starting the {XthBatch}th batch=================")
         trainSet, testSet, originalDic, _ = prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster,batch_size, XthBatch, cluster_size, method, windowSize, ratio, pickleJarName)
         batchRun(model, trainSet, originalDic, testSet, num_of_centroids, factors, 
-                 log, busSimMat, privacy = 1, epochs = maxEpochs, random = Random, MAE = mae, RMSE = rmse )
+                 log, busSimMat, privacy = 1, random = Random, MAE = mae, RMSE = rmse )
     log.close
 
 
 def originalRun(model, fileName, startYear, min_NO_rating, totalNOB,  batch_size,  factors,  POIsims, windowSize,
-                maxEpochs = 40, Random = 6, mae = True, rmse = True):
+                 Random = 6, mae = True, rmse = True):
     if platform.system() == 'Windows':
             filePrefix  = os.path.dirname(os.path.realpath(__file__)) + "\\..\\resultDumpster\\" 
     else:
@@ -667,5 +667,6 @@ def originalRun(model, fileName, startYear, min_NO_rating, totalNOB,  batch_size
         print(f"=================Starting the {XthBatch}th batch=================")
         _, testSet, _, originalTrainSet = prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster,batch_size, XthBatch, 0, None, windowSize, None, None)
         batchRun(model, originalTrainSet, None, testSet,  0, factors, log, busSimMat,
-                privacy =0, epochs = maxEpochs, random = Random, MAE = mae, RMSE = rmse )
+                privacy =0, random = Random, MAE = mae, RMSE = rmse )
+
     log.close

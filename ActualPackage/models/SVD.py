@@ -8,12 +8,12 @@ from collections import defaultdict
 
 class SVD(AlgoBase):
 
-    def __init__(self, n_factors=100, n_epochs=20, biased=False, init_mean=0,
-                 init_std_dev=.1, lr_all=.005,
-                 reg_all=.02, lr_bu=None, lr_bi=None, lr_pu=None,
-                 lr_qi=None,
-                 reg_bu=None, reg_bi=None, reg_pu=None, 
-                 reg_qi=None,
+    def __init__(self, n_factors=40, n_epochs=200, biased=False, init_mean=0,
+                 init_std_dev=.1, lr_all=.01,
+                 reg_all=.5, lr_bu=None, lr_bi=None, 
+                 lr_pu=None, lr_qi=None,
+                 reg_bu=None, reg_bi=None, 
+                 reg_pu=None, reg_qi=None,
                  random_state=None, verbose=False):
         self.n_factors = n_factors
         self.n_epochs = n_epochs
@@ -34,7 +34,6 @@ class SVD(AlgoBase):
         self.simComputed = False
         self.simDic = defaultdict()
         self.num_predicted = 0      
-
         AlgoBase.__init__(self)
 
     def fit(self, trainset):
@@ -116,7 +115,7 @@ class SVD(AlgoBase):
                 est = np.dot(self.qi[i], self.pu[u])
             else:
                 raise PredictionImpossible('User and item are unknown.')
-
+        #print(est)
         return est
        
        
