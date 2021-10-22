@@ -1,0 +1,280 @@
+import os
+import csv
+import numbers
+import numpy as np
+import pandas as pd
+from collections import defaultdict
+
+
+#Creat a pandas dataframe from a file, the file is in the same folder, check its format
+#the input is a string of the file name
+def createPandasDataFrame(fileName): # this applies to windows, if you are using a linex or Mac, change next line
+    inputFile = os.path.abspath(__file__+"/..")+ "/" + fileName # <---- this is what I mean
+    print(f"Reading this file: {inputFile}")
+    df = pd.read_csv(inputFile)
+    return df
+#this function generates four fucntions, this is how people usually translate IDs from raw to inner
+#I explained what is raw and inner ID in later sections.
+def genFourDics(df):# this applies to windows, if you are using a linex or Mac, change next line
+    uid = []
+    iid = []
+    for user in df['userId']:
+        uid.append(user)
+    for movie in df['movieId']:
+        iid.append(movie)
+    to_inner_uid = defaultdict()
+    to_inner_iid = defaultdict()
+    to_outer_uid = defaultdict()
+    to_outer_iid = defaultdict()
+#================== uid ==============================
+    for eachID in uid:
+        if eachID not in to_inner_uid:
+            innerID = len(to_inner_uid)
+            to_outer_uid[innerID] = eachID
+            to_inner_uid[eachID] = int(innerID)
+    #================== iid ==============================
+    for eachID in iid:
+        if eachID not in to_inner_iid:
+            innerID = len(to_inner_iid)
+            #print(innerID)
+            to_outer_iid[innerID] = eachID
+            to_inner_iid[eachID] = int(innerID)  
+            #  
+    return to_inner_uid, to_outer_uid, to_inner_iid, to_outer_iid                
+
+# This function conferts a dataframe from raw IDs to inner IDs.
+# The inputs are a dataframe of raw IDs and a string name of the data file
+def convertToInner(df_input, to_inner_uid, to_inner_iid):
+    df = df_input
+    #to_inner_uid, _, to_inner_iid, _ = genFourDics(df)
+    uids = df['userId']
+    inner_uid = []
+    for eachOuter in uids:
+        inner_uid.append(int(to_inner_uid[eachOuter]))
+    iids = df['movieId']
+    inner_iid = []
+    for eachOuter in iids:
+        iid = int(to_inner_iid[eachOuter])
+        inner_iid.append(iid)
+
+    ratings = []
+    for eachRating in df['rating']:
+        ratings.append(eachRating)
+
+    timestamps = []
+    for eachTime in df['timestamp']:
+        timestamps.append(eachTime)
+
+    d = {'userId':inner_uid, 'movieId': inner_iid, 'rating' : ratings, 'timestamp' : timestamps}
+    df1 = pd.DataFrame(data=d)
+    
+    return df1
+
+
+#This function conferts a dataframe from inner IDs to raw IDs.
+#The inputs are same things compared to the above one.
+def convertToOuter(df_input, to_outer_uid, to_outer_iid):
+    df = df_input
+    uids = df['userId']
+    outer_uid = []
+    for eachInner in uids:
+        if eachInner in to_outer_uid:
+            outer_uid.append(to_outer_uid[eachInner])
+        else:
+            outer_uid.append(eachInner)
+    iids = df['movieId']
+    #print(type(iids))
+    outer_iid = []
+    for eachInner in iids:
+        outer_iid.append(to_outer_iid[eachInner])
+    d = {'userId':outer_uid, 'movieId': outer_iid}
+    df1 = pd.DataFrame(data=d)
+    df = df1[['userId', 'movieId']].copy()
+    return df
+
+# this function partition the entire dataset into the training set and testing set
+# one dataframe is needed and the second one is the ratio. For example you have 10 records, 
+# if the ratio is 0.6, then 6 records are in the training set and 4 are in the test set.
+def partition(df, train_ratio):
+    shuffledDf = df.sample(frac=1)
+    trainSize = int(len(shuffledDf.index) * train_ratio)
+    train_df = shuffledDf.iloc[0:(trainSize - 1)]
+    test_df  = shuffledDf.iloc[(trainSize):(len(shuffledDf.index))]
+    return train_df, test_df
+
+# if you do not want to mess with random state, leave it alone, don't mind it.
+def get_rng(random_state):
+    # if you are not familiar with random state, ignore this.
+    if random_state is None:
+        return np.random.mtrand._rand
+    elif isinstance(random_state, (numbers.Integral, np.integer)):
+        return np.random.RandomState(random_state)
+    if isinstance(random_state, np.random.RandomState):
+        return random_state
+    raise ValueError('Wrong random state. Expecting None, an int or a numpy '
+                     'RandomState instance, got a '
+                     '{}'.format(type(random_state)))
+
+# this function extract a simple list out of the dataframe.
+# the structure of the list is [(u,i,r),(u,i,r),(u,i,r),(u,i,r), ...] u:user, i: movie, r: rating
+def to_u_i_r_list(df, convertToInt = False): #modify this function when you need to use other column names 
+    u_i_rList = []
+    convert_dict = {'userId': int,
+                    'movieId': int, 
+                    'rating':float
+                    }
+    if convertToInt == True:
+        df = df.astype(convert_dict)
+
+    for row in df.itertuples():
+        u_i_rList.append((row.userId, row.movieId, row.rating))# <----this is what I mean
+    return u_i_rList
+
+# this function create a rating matrix, rows are users, and columns are items.
+# however, it is in the format of a default dictionary. So you can only use it like MatrixDicU[u][i]
+def toMatrixDicU(u_i_r_list):
+    MatrixDicU = defaultdict()      
+    for u,i,r in u_i_r_list:
+        if u in MatrixDicU:
+            if i in MatrixDicU[u]:
+                MatrixDicU[u][i] = r
+            else:
+                MatrixDicU[u] = defaultdict()
+                MatrixDicU[u][i] = r  
+        else:
+            MatrixDicU[u] = defaultdict()
+            MatrixDicU[u] = defaultdict() 
+            MatrixDicU[u][i] = r             
+    return MatrixDicU
+
+# this function create a rating matrix, rows are movie names, and columns are users.
+# however, it is in the format of a default dictionary. So you can only use it like MatrixDicI[i][u]
+def toMatrixDicI(u_i_r_list):
+    toMatrixDicI = defaultdict()      
+    for u,i,r in u_i_r_list:
+        if i in toMatrixDicI:
+            if u in toMatrixDicI[i]:
+                toMatrixDicI[i][u] = r
+            else:
+                toMatrixDicI[i] = defaultdict()
+                toMatrixDicI[i][u] = r  
+        else:
+            toMatrixDicI[i] = defaultdict()
+            toMatrixDicI[i] = defaultdict() 
+            toMatrixDicI[i][u] = r             
+    return toMatrixDicI
+
+# this is the major iterations of how one epoch process the data. 
+# you need the u_i_r_list from the training set
+# the MatrixDicU and MtraixDicI are easy to create using the above funcitons if you have the u_i_r_list.
+# pu, qi are the vectors from lower-rank matrices P and Q, read NMF paper if you are confused.
+# n_users is the number of users
+# n_items is the number of movies
+# n_factors is the number of latent factors when you perform matrix factorization.
+# reg_pu, reg_qi are the learning rate for pu and qi, I have default values for them
+# However, if you think you are confident enough, feel free to change them
+
+def sgd(u_i_r_list, n_factors, n_epochs = 3, lr_pu = 0.1, lr_qi = 0.1, reg_pu=.01,
+        reg_qi=.01, init_mean = 0, init_std_dev = 0.1, random_state=None):
+        rng = get_rng(random_state)
+        MatrixDicU = toMatrixDicU(u_i_r_list)
+        MatrixDicI = toMatrixDicI(u_i_r_list)
+        n_users = len(MatrixDicU)
+        n_items = len(MatrixDicI)
+        print(f"there are {n_users} users in train")
+        print(f"there are {n_items} movies in train")
+        pu  = rng.normal(init_mean, init_std_dev,(n_users, n_factors))
+        qi  = rng.normal(init_mean, init_std_dev,(n_items, n_factors))
+        #pu  = np.ones((n_users, n_factors))
+        #qi  = np.ones((n_items, n_factors))
+
+        for current_epoch in range(n_epochs):
+            
+            print("Processing epoch {}".format(current_epoch))
+            for u, i, r in u_i_r_list:
+                # compute current error
+                dot = 0
+                for f in range(n_factors):
+                    dot += qi[i, f] * pu[u, f]
+                err = r - dot
+                print(err, '...' , r , '...' , dot)
+                # update factors
+                for f in range(n_factors):
+                    puf = pu[u, f]
+                    qif = qi[i, f]
+                    pu[u, f] += lr_pu * (err * qif - reg_pu * puf)
+                    qi[i, f] += lr_qi * (err * puf - reg_qi * qif)
+        return pu, qi 
+
+# this is how you predic a particular rating given the user and movie
+# by now you should have known what the params mean.
+
+def furtherFilter(df_trainOrignal, df_test):    
+    for item in df_test['movieId'].drop_duplicates():
+        if len(df_trainOrignal.loc[df_trainOrignal["movieId"] == item]) == 0:
+            df_test = df_test.drop(df_test[df_test.movieId == item].index)
+        # check if item existed before
+    for user in df_test['userId'].drop_duplicates():
+        if len(df_trainOrignal.loc[df_trainOrignal["userId"] == user]) == 0:
+            df_test = df_test.drop(df_test[df_test.userId == user].index)       
+    return df_trainOrignal, df_test
+
+class Test(object):
+       n = 0
+       i = 0
+       user = 0
+       item = 0
+
+def predict(u, i, pu, qi, to_inner_uid, to_inner_iid):
+    if u not in to_inner_uid:
+        #print(f"User {u} not in traning set ...")
+        return 3.5
+    else:
+        inner_u = to_inner_uid[u]
+    if i not in to_inner_iid:
+        #print(f"Movie {i} not in traning set ...")
+        return 3.5
+    else:
+        inner_i = to_inner_iid[i]
+    return np.dot(qi[inner_i], pu[inner_u])
+
+# This one calculate the mean absolute errors, you do need to retrieve it then print it
+# you need the trained pu and qi and the u_i_r_list from the test set.
+# Yes, I call it testList.
+def calMae(testList, pu, qi, to_inner_uid, to_inner_iid ):
+    predictions = []
+    for u, i, r in testList:
+        prediction = predict(u, i, pu, qi, to_inner_uid, to_inner_iid)
+        predictions.append((r,prediction))
+    MAE = np.mean([float(abs(true_r - est)) for (true_r, est) in predictions])
+    return MAE
+
+
+# create PD:
+fileName = 'ratings.csv'
+# choose your partition ratio
+ratio = 0.9
+# select the number of latent factors
+n_factors = 10
+# load up the data
+outer_df = createPandasDataFrame(fileName)
+train_df, test_df = partition(outer_df, ratio)     
+to_inner_uid, to_outer_uid, to_inner_iid, to_outer_iid = genFourDics(train_df)
+inner_train_df = convertToInner(train_df, to_inner_uid, to_inner_iid)
+print('#....')
+#outer_train_df = convertToOuter(train_df, to_outer_uid, to_outer_iid)  
+#temp = inner_df['movieId'].drop_duplicates()
+#print(temp)                              
+#print(inner_train_df == outer_train_df)
+#print(inner_train_df)    
+trainList = to_u_i_r_list(inner_train_df, True)
+testList  = to_u_i_r_list(test_df, False)
+#print(testList)
+# train the model
+pu, qi = sgd(trainList, n_factors)
+
+# test the model
+print(pu)
+print(qi)
+mae = calMae(testList, pu, qi, to_inner_uid, to_inner_iid)
+print(f"MAE is {mae} ")
