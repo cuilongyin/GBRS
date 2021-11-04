@@ -38,7 +38,6 @@ class GBRS_vanilla(AlgoBase):
         self.num_predicted = 0      
         self.num_centroids = numCtds
         self.busSimMat = busSimMat
-        self.biased = False
         AlgoBase.__init__(self)
 
     def fit(self, trainset):
@@ -122,8 +121,8 @@ class GBRS_vanilla(AlgoBase):
                 est = np.dot(self.qi[i], self.pu[u])
             else:
                 raise PredictionImpossible('User and item are unknown.')
-        qiT = np.transpose(self.qi)
-        product = np.matmul(self.pu,qiT)
+        #qiT = np.transpose(self.qi)
+        #product = np.matmul(self.pu,qiT)
         #print(product)
         #np.savetxt("mtx1.csv", product, delimiter=",")
         

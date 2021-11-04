@@ -12,7 +12,7 @@ from numpy import dot
 from numpy.linalg import norm
 
 # In[595]:
-class GBRS_POIsims(AlgoBase):
+class GBRS_POIsimsPP(AlgoBase):
 
     def __init__(self, n_factors=100, n_epochs=20, biased=True, init_mean=0,
                  init_std_dev=.1, lr_all=.005,
@@ -23,10 +23,6 @@ class GBRS_POIsims(AlgoBase):
                  reg_qj=None,
                  random_state=None, verbose=False, originalDic=None,
                  numCtds = None, busSimMat = None):
-                # modify reg_qi 
-                # modify reg_qj
-                # modify lr_qi
-                # they were all None, remember this.
         self.n_factors = n_factors
         self.n_epochs = n_epochs
         self.biased = biased
@@ -50,6 +46,7 @@ class GBRS_POIsims(AlgoBase):
         self.num_predicted = 0      
         self.num_centroids = numCtds
         self.busSimMat = busSimMat
+        self.allAboutUserDics = defaultdict()
         AlgoBase.__init__(self)
 
     def fit(self, trainset):
@@ -188,6 +185,7 @@ class GBRS_POIsims(AlgoBase):
 
         userRatingVec = [ x[1] for x in self.originalDic[user]]
         itemVec   = [ self.trainset.to_inner_iid(x[0]) for x in self.originalDic[user] ]
+        self.allAboutUserDics[user] = [userRatingVec, itemVec]
 
         for eachGroup in list(self.trainset.all_users()):
             groupItemRatingVec = self.centroidRatingDic[eachGroup]
@@ -241,7 +239,7 @@ class GBRS_POIsims(AlgoBase):
         return rankedPOIs
         
     def estimate(self, u, i):
-        print(f"user {u}, item {i}")
+        #print(f"user {u}, item {i}")
         self.num_predicted += 1
         
         u = u.split('UKN__')[1] #surprise will ad UKN__ infront of every user index since 
@@ -252,7 +250,16 @@ class GBRS_POIsims(AlgoBase):
 
         (rankedCtd, correspondingSims) = self.simDic[u]
         
+        #===============================================================
+        # know u and i
+        #find all rated items by this user. 
+        itemVec = self.allAboutUserDics[u][1]
+        simVec = [self.busSimMat[self.trainset.to_raw_iid(i)][self.trainset.to_raw_iid(j)] for j in itemVec]
+        userRatingVec = self.allAboutUserDics[u][0]
+        secondOpinion = np.dot(userRatingVec, simVec)/sum(simVec)
+        #print(secondOpinion)
 
+        #===============================================================
         
         #print( f" user: {u} item: { self.trainset.to_raw_iid(i)}  est = {rating_vec[i]}  all the group ratings are {groupRatings} ")
         rList = [] # the ratings from all the same item
@@ -261,6 +268,6 @@ class GBRS_POIsims(AlgoBase):
         result = np.dot(rList, correspondingSims)/sum(correspondingSims)
         if self.num_predicted%10 == 0:
             print(f"Have finisehd predicting {self.num_predicted} ratings..." )
-        return result
+        return (result+secondOpinion)/2
         #return sum(rating_vec)/len(rating_vec)
 

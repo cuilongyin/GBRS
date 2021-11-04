@@ -1,8 +1,9 @@
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../")
-#import ActualPackage.models.vanilla as vanila
-#import ActualPackage.models.POIsims as POI
+import ActualPackage.models.vanilla as vanila
+import ActualPackage.models.POIsims         as POI
+import ActualPackage.models.POIsimsPlusPlus as POIpp
 import ActualPackage.models.SVD as SVD
 import ActualPackage.models.SVD_POIsims as SVD_POIsims
 import ActualPackage.functions.methods as functions
@@ -87,11 +88,33 @@ def main_SVD_POIsims():
     functions.originalRun(model, fileName, startYear, min_NO_rating,
                        totalNOB,  batch_size,  factors, POIsims, windowSize)
 
+def main_POIPP():
+    model = POIpp.GBRS_POIsimsPP
+    fileName = "UC.csv"
+    startYear = 2007
+    min_NO_rating = 9999999998      # 3: 22785 lines
+    batch_size = 900     
+    cluster_size = 6      #clusters per batch
+    totalNOB = 33           #number of Batch, not including the test batch
+    factors = 3
+    num_of_centroids = 9
+    POIsims = 1
+    method = 'spectral_ratingGPS'
+    windowSize = 1
+    ratio = 1 # this parameter only is used when  the method =  'spectral_ratingGPS'
+    pickleJarName = "./PickleJar/"
+    
+    functions.totalRun(model, fileName, startYear, min_NO_rating, 
+                       totalNOB, cluster_size, batch_size, num_of_centroids, 
+                       factors, POIsims, method, windowSize, ratio, pickleJarName)
+
 if __name__ == "__main__":
     #main_vanilla()
     #main_POIsims()
+    main_POIPP()
     #main_SVD()
-    main_SVD_POIsims()
+    #main_SVD_POIsims()
+    
 
 
 #  GBRS, GBRS + review
