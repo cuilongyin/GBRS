@@ -544,6 +544,7 @@ def test(trainedModel, testSet,log, mae = 1, rmse = 1):
     log.write(str(precision) + ',' )
     log.write(str(recall) + '\n' )
     print("Done ...")
+    return acc_rmse, acc_mae, precision, recall
 
 # In[613]:
 
@@ -633,8 +634,8 @@ def batchRun(model, trainSet, originalDic, testSet, num_of_centroids,
              factors, log, busSimMat, privacy, random = 6, MAE = 1, RMSE = 1 ):
                    
     trainedModel = train(model, trainSet, factors, random, originalDic, num_of_centroids, busSimMat = busSimMat, privacy = privacy)
-    test(trainedModel, testSet, log, mae = MAE, rmse = RMSE)
-
+    acc_rmse, acc_mae, precision, recall = test(trainedModel, testSet, log, mae = MAE, rmse = RMSE)
+    return acc_rmse, acc_mae, precision, recall
 
 # In[616]:
 
@@ -671,13 +672,16 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
 
     batchDic_cluster = defaultdict()
     batchDic_unCluster = defaultdict()
+    resultDic = defaultdict()
 
     for XthBatch in range(1, totalNOB+1):
         print(f"=================Starting the {XthBatch}th batch=================")
         trainSet, testSet, originalDic, _ = prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster,batch_size, XthBatch, cluster_size, method, windowSize, ratio, pickleJarName)
-        batchRun(model, trainSet, originalDic, testSet, num_of_centroids, factors, 
+        acc_rmse, acc_mae, precision, recall = batchRun(model, trainSet, originalDic, testSet, num_of_centroids, factors, 
                  log, busSimMat, privacy = 1, random = Random, MAE = mae, RMSE = rmse )
+        resultDic[XthBatch] = [acc_rmse, acc_mae, precision, recall]
     log.close
+    return resultDic
 
 
 def originalRun(model, fileName, startYear, min_NO_rating, totalNOB,  batch_size,  factors,  POIsims, windowSize,
@@ -706,11 +710,12 @@ def originalRun(model, fileName, startYear, min_NO_rating, totalNOB,  batch_size
         busSimMat = None
     batchDic_cluster = defaultdict()
     batchDic_unCluster = defaultdict()
-    #print(busSimMat)
+    resultDic = defaultdict()
     for XthBatch in range(1, totalNOB+1):
         print(f"=================Starting the {XthBatch}th batch=================")
         _, testSet, _, originalTrainSet = prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster,batch_size, XthBatch, 0, None, windowSize, None, None)
-        batchRun(model, originalTrainSet, None, testSet,  0, factors, log, busSimMat,
+        acc_rmse, acc_mae, precision, recall = batchRun(model, originalTrainSet, None, testSet,  0, factors, log, busSimMat,
                 privacy =0, random = Random, MAE = mae, RMSE = rmse )
-
+        resultDic[XthBatch] = [acc_rmse, acc_mae, precision, recall]
     log.close
+    return resultDic
