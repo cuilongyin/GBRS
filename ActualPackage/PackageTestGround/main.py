@@ -33,7 +33,7 @@ def main_vanilla():
         #windowSize = i
     #for i in range(11):
         #ratio = i * 0.1
-    functions.totalRun(model, fileName, startYear, min_NO_rating,
+    resultDic = functions.totalRun(model, fileName, startYear, min_NO_rating,
                        totalNOB, cluster_size, batch_size, num_of_centroids, 
                        factors, POIsims, method, windowSize, ratio, pickleJarName)
 #0-5: 1.3619   5-10: 1.3775  10-15: 1.3568 15-20: 1.3541  20-25: RMSE: 1.3812
@@ -108,12 +108,24 @@ def main_POIPP():
                        totalNOB, cluster_size, batch_size, num_of_centroids, 
                        factors, POIsims, method, windowSize, ratio, pickleJarName)
 
+def BO_func(NN, SHRK):
+    recommender = ItemCBFKNNRecommender(URM_train_train, ICM_all)
+    recommender.fit(shrink = int(SHRK), topK = int(NN))
+    res_valid = evaluate_algorithm(URM_valid, recommender)
+  
+    return res_valid["MAP"]
+
 if __name__ == "__main__":
-    #main_vanilla()
+    main_vanilla()
     #main_POIsims()
-    main_POIPP()
+    #main_POIPP()
     #main_SVD()
     #main_SVD_POIsims()
+    tuning_params = dict()
+    tuning_params = { 
+        "NN": (50,1500),
+        "SHRK": (0,2000)
+        }
     
 
 
