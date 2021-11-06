@@ -7,7 +7,8 @@ import ActualPackage.models.POIsimsPlusPlus as POIpp
 import ActualPackage.models.SVD as SVD
 import ActualPackage.models.SVD_POIsims as SVD_POIsims
 import ActualPackage.functions.methods as functions
-
+from bayes_opt import BayesianOptimization
+print("libraries loaded")
 def main_vanilla():
     model = vanila.GBRS_vanilla
     fileName = "UC.csv"
@@ -17,7 +18,7 @@ def main_vanilla():
     batch_size = 900
     #batch_size = 1000    
     cluster_size = 6      #clusters per batch
-    totalNOB = 33           #number of Batch, not including the test batch
+    totalNOB = 1           #number of Batch, not including the test batch
     #totalNOB = 192
     factors = 3
     num_of_centroids = 9
@@ -33,10 +34,37 @@ def main_vanilla():
         #windowSize = i
     #for i in range(11):
         #ratio = i * 0.1
-    resultDic = functions.totalRun(model, fileName, startYear, min_NO_rating,
+        
+ 
+    result = functions.totalRun(model, fileName, startYear, min_NO_rating,
                        totalNOB, cluster_size, batch_size, num_of_centroids, 
                        factors, POIsims, method, windowSize, ratio, pickleJarName)
+    return -result
+def optimize_vanilla(batch_size, cluster_size, factors, num_of_centroids, ratio):
+    model = vanila.GBRS_vanilla
+    fileName = "UC.csv"
+    startYear = 2007
+    min_NO_rating = 9999999999   # total is 576065, filtering is too slow because of the matrix being too large.
+    batch_size = int(batch_size)    
+    cluster_size = int(cluster_size)      #clusters per batch
+    totalNOB = int(33770/batch_size) - 1           #number of Batch, not including the test batch
+    factors = int(factors)
+    num_of_centroids = int(num_of_centroids)
+    POIsims = 0
+    windowSize = 1
+    method = 'spectral_ratingGPS' # kmean, spectral_ratingGPS, spectral_pure, cluster_DBSCAN, cluster_FCM
+    ratio = ratio # this parameter only is used when  the method =  'spectral_ratingGPS'
+    pickleJarName = "./PickleJar/" + "batchSize_" + str(batch_size) + "/"
+    if not os.path.exists(pickleJarName):
+        os.makedirs(pickleJarName)
+    #print(pickleJarName)
+
+    result = functions.totalRun(model, fileName, startYear, min_NO_rating,
+                       totalNOB, cluster_size, batch_size, num_of_centroids, 
+                       factors, POIsims, method, windowSize, ratio, pickleJarName)
+    return -result
 #0-5: 1.3619   5-10: 1.3775  10-15: 1.3568 15-20: 1.3541  20-25: RMSE: 1.3812
+
 def main_POIsims():
     
     model = POI.GBRS_POIsims
@@ -108,24 +136,33 @@ def main_POIPP():
                        totalNOB, cluster_size, batch_size, num_of_centroids, 
                        factors, POIsims, method, windowSize, ratio, pickleJarName)
 
-def BO_func(NN, SHRK):
-    recommender = ItemCBFKNNRecommender(URM_train_train, ICM_all)
-    recommender.fit(shrink = int(SHRK), topK = int(NN))
-    res_valid = evaluate_algorithm(URM_valid, recommender)
-  
-    return res_valid["MAP"]
+def OPT_function():
+    pbounds = {'batch_size':(1000,3000),
+               'cluster_size' : (1,20),
+               'factors' : (1,40),
+               'num_of_centroids':(1,20),
+               'ratio' : (0,1)}
+               
+    optimizer = BayesianOptimization(
+        f = optimize_vanilla,
+        pbounds=pbounds,
+        verbose=2, # verbose = 1 prints only when a maximum is observed, verbose = 0 is silent
+        random_state=1
+        )
+
+    optimizer.maximize(
+        init_points=10,
+        n_iter=90
+        )  
 
 if __name__ == "__main__":
-    main_vanilla()
+
+    #main_vanilla()
     #main_POIsims()
     #main_POIPP()
     #main_SVD()
     #main_SVD_POIsims()
-    tuning_params = dict()
-    tuning_params = { 
-        "NN": (50,1500),
-        "SHRK": (0,2000)
-        }
+    OPT_function()
     
 
 

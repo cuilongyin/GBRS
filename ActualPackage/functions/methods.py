@@ -1,4 +1,5 @@
 import os
+import sys
 import csv
 import math
 import time
@@ -375,7 +376,7 @@ def cluster_ratingGPS_part1(curr_df, Xth_batch, clusters_per_batch, pickleJarNam
         'Rsims':Rsims
         }
 
-    pickleJarName
+    #pickleJarName
     #fileName = "./PickleJar/" +str(Xth_batch) + "thPart1Package.pkl"
     fileName = pickleJarName +str(Xth_batch) + "thPart1Package.pkl"
     with open(fileName, 'wb') as pDump:
@@ -638,13 +639,19 @@ def batchRun(model, trainSet, originalDic, testSet, num_of_centroids,
     return acc_rmse, acc_mae, precision, recall
 
 # In[616]:
+def blockPrint():
+    sys.stdout = open(os.devnull, 'w')
 
+# Restore
+def enablePrint():
+    sys.stdout = sys.__stdout__
 
 def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
              batch_size, num_of_centroids, factors, POIsims, method, windowSize, ratio, pickleJarName,
              Random = 6, mae = True, rmse = True):
     # if you need to see results, set mae or rmse to True
     # Randome is Random state 
+    blockPrint()
     if platform.system() == 'Windows':
         filePrefix  = os.path.dirname(os.path.realpath(__file__)) + "\\..\\resultDumpster\\" 
     else:
@@ -681,7 +688,14 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
                  log, busSimMat, privacy = 1, random = Random, MAE = mae, RMSE = rmse )
         resultDic[XthBatch] = [acc_rmse, acc_mae, precision, recall]
     log.close
-    return resultDic
+    mean = 0
+    count  = 0
+    for key, value in resultDic.items():
+        mean += value[0]
+        count += 1
+    print(f"Mean RMSE: {mean/count}")
+    enablePrint()
+    return mean/count
 
 
 def originalRun(model, fileName, startYear, min_NO_rating, totalNOB,  batch_size,  factors,  POIsims, windowSize,
@@ -718,4 +732,10 @@ def originalRun(model, fileName, startYear, min_NO_rating, totalNOB,  batch_size
                 privacy =0, random = Random, MAE = mae, RMSE = rmse )
         resultDic[XthBatch] = [acc_rmse, acc_mae, precision, recall]
     log.close
-    return resultDic
+    mean = 0
+    count  = 0
+    for key, value in resultDic.items():
+        mean += value[0]
+        count += 1
+    print(f"Mean RMSE: {mean/count}")
+    return mean/count
