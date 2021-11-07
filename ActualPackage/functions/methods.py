@@ -39,7 +39,6 @@ def filiterYear(df, startYear): # startYear is an integer
     for i in range(2004, startYear):
         df = df[~df.date.str.contains(str(i))]
     df = df.reset_index(drop = True)
-    #print(df)
     return df
 
 
@@ -450,7 +449,6 @@ def createTestDf(df, batchDic_unCluster, batch_size, XthBatch):
     
     if XthBatch not in batchDic_unCluster:
         batchDic_unCluster[XthBatch] = creatingXthBatch_unClustered(df, batch_size, XthBatch)
-    print(batchDic_unCluster[XthBatch])
     return batchDic_unCluster[XthBatch]
 
 # In[608]:
@@ -614,7 +612,6 @@ def prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster, batch_size, NOo
     print("Preparing training and testing datasets and objects ...")
     df_train = createTrainDf_clustered(df, batchDic_cluster, batchDic_unCluster, batch_size, NOofBatches, cluster_size, method, windowSize, ratio, pickleJarName)
     df_test  = createTestDf(df, batchDic_unCluster, batch_size, NOofBatches+1) 
-    print(df_test)
     df_trainOrignal = createTrainDf_unClustered(batchDic_unCluster, NOofBatches, windowSize) 
     # the original rating matrix is not imputed at this point
     
@@ -658,7 +655,7 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
              Random = 6, mae = True, rmse = True):
     # if you need to see results, set mae or rmse to True
     # Randome is Random state 
-    #blockPrint()
+    blockPrint()
     if platform.system() == 'Windows':
         filePrefix  = os.path.dirname(os.path.realpath(__file__)) + "\\..\\resultDumpster\\" 
     else:
@@ -688,7 +685,7 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
     batchDic_unCluster = defaultdict()
     resultDic = defaultdict()
 
-    for XthBatch in range(44, totalNOB+1):
+    for XthBatch in range(1, totalNOB+1):
         print(f"=================Starting the {XthBatch}th batch=================")
         trainSet, testSet, originalDic, _ = prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster,batch_size, XthBatch, cluster_size, method, windowSize, ratio, pickleJarName)
         acc_rmse, acc_mae, precision, recall = batchRun(model, trainSet, originalDic, testSet, num_of_centroids, factors, 
