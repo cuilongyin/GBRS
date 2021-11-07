@@ -15,16 +15,16 @@ def main_vanilla():
     #fileName = "Phoenix.csv"
     startYear = 2007
     min_NO_rating = 9999999999   # total is 576065, filtering is too slow because of the matrix being too large.
-    batch_size = 900
-    #batch_size = 1000    
+    #batch_size = 900
+    batch_size = 378    
     cluster_size = 6      #clusters per batch
-    totalNOB = 1           #number of Batch, not including the test batch
-    #totalNOB = 192
+    #totalNOB = 1           #number of Batch, not including the test batch
+    totalNOB = 88
     factors = 3
     num_of_centroids = 9
     POIsims = 0
     windowSize = 1
-    method = 'spectral_ratingGPS' # kmean, spectral_ratingGPS, spectral_pure, cluster_DBSCAN, cluster_FCM
+    method = 'kmean' # kmean, spectral_ratingGPS, spectral_pure, cluster_DBSCAN, cluster_FCM
     ratio = 1 # this parameter only is used when  the method =  'spectral_ratingGPS'
     #pickleJarName = "./PickleJar_Phoenix/" #"./PickleJar/"
     pickleJarName = "./PickleJar/" + "batchSize_" + str(batch_size) + "/"
@@ -48,12 +48,12 @@ def optimize_vanilla(batch_size, cluster_size, factors, num_of_centroids):
     min_NO_rating = 9999999999   # total is 576065, filtering is too slow because of the matrix being too large.
     batch_size = int(batch_size)    
     cluster_size = int(cluster_size)      #clusters per batch
-    totalNOB = int(33770/batch_size) - 1           #number of Batch, not including the test batch
+    totalNOB = int(33770/batch_size - 1)           #number of Batch, not including the test batch
     factors = int(factors)
     num_of_centroids = int(num_of_centroids)
     POIsims = 0
     windowSize = 1
-    method = 'spectral_pure' # kmean, spectral_ratingGPS, spectral_pure, cluster_DBSCAN, cluster_FCM
+    method = 'kmean' # kmean, spectral_ratingGPS, spectral_pure, cluster_DBSCAN, cluster_FCM
     ratio = 1 # this parameter only is used when  the method =  'spectral_ratingGPS'
     pickleJarName = "./PickleJar/" + "batchSize_" + str(batch_size) + "/"
     if not os.path.exists(pickleJarName):
@@ -138,7 +138,7 @@ def main_POIPP():
                        factors, POIsims, method, windowSize, ratio, pickleJarName)
 
 def OPT_function():
-    pbounds = {'batch_size':(1000,3000),
+    pbounds = {'batch_size':(100,2000),
                'cluster_size' : (1,20),
                'factors' : (1,40),
                'num_of_centroids':(1,20),
@@ -158,13 +158,13 @@ def OPT_function():
 
 if __name__ == "__main__":
 
-    #main_vanilla()
+    main_vanilla()
     #main_POIsims()
     #main_POIPP()
     #main_SVD()
     #main_SVD_POIsims()
     
-    OPT_function()
+    #OPT_function()
     
 
  
