@@ -358,6 +358,9 @@ def cluster_ratingGPS_part1(curr_df, Xth_batch, clusters_per_batch, pickleJarNam
         for index2, row2 in locDf.iterrows():
             A = [row1['lat'],row1['lon']]
             B = [row2['lat'],row2['lon']]
+            #(x >= 0) ? x : -x
+            A = [abs(A[0]-locDf.lat.mean()), abs(A[1]-locDf.lon.mean())]
+            B = [abs(B[0]-locDf.lat.mean()), abs(B[1]-locDf.lon.mean())]
             sim = np.dot(A,B)/(np.linalg.norm(A)*np.linalg.norm(B))
             user1s.append(row1['user_id'])
             user2s.append(row2['user_id'])
@@ -417,13 +420,13 @@ def cluster_ratingGPS_part3(curr_df, Xth_batch, clusters_per_batch, ratio, pickl
     fileName = pickleJarName +str(Xth_batch) + "thSimMat"+   "_ratio(" + str(ratio)  + ").pkl"
     if (os.path.exists(fileName)):
         simMat = pd.read_pickle(fileName)
+
     else:
         simMat = cluster_ratingGPS_part2(curr_df, Xth_batch, clusters_per_batch, ratio, pickleJarName)    
-    #print(simMat)
+
     simArray = np.array(simMat)
     num_clusters = clusters_per_batch
-    
-    sc = SpectralClustering(num_clusters, affinity='precomputed')
+    sc = SpectralClustering(num_clusters, eigen_solver = 'amg', affinity='precomputed')
     sc.fit(simArray)
     
     #================================================ Finished Clustering ==============================================
@@ -655,7 +658,7 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
              Random = 6, mae = True, rmse = True):
     # if you need to see results, set mae or rmse to True
     # Randome is Random state 
-    blockPrint()
+    # blockPrint()
     if platform.system() == 'Windows':
         filePrefix  = os.path.dirname(os.path.realpath(__file__)) + "\\..\\resultDumpster\\" 
     else:
