@@ -17,6 +17,9 @@ from collections import defaultdict
 from sklearn.cluster import DBSCAN
 from sklearn.cluster import SpectralClustering
 from surprise.model_selection import train_test_split
+
+import warnings
+from sklearn.exceptions import DataConversionWarning
 # In[596]:
 
 
@@ -204,10 +207,11 @@ def cluster_spectral_pure(df, Xth_batch, clusters_per_batch):
 
     nppdf = pdf.to_numpy()
     model = SpectralClustering(assign_labels='discretize', n_clusters=clusters_per_batch, eigen_solver = 'amg', random_state=0)
-    model.fit_predict(nppdf)
 
+    warnings.filterwarnings(action='ignore', category=Warning)
+    model.fit_predict(nppdf)
     pdf = pdf.multiply(1/scale)
-    print(model.labels_)
+    #print(model.labels_)
 
     groupIDs = []
     for eachLabel in model.labels_:
@@ -377,7 +381,7 @@ def cluster_ratingGPS_part1(curr_df, Xth_batch, clusters_per_batch, pickleJarNam
         }
 
     #pickleJarName
-    #fileName = "./PickleJar/" +str(Xth_batch) + "thPart1Package.pkl"
+    #fileName = "./PickleJar/" + str(Xth_batch) + "thPart1Package.pkl"
     fileName = pickleJarName +str(Xth_batch) + "thPart1Package.pkl"
     with open(fileName, 'wb') as pDump:
         pickle.dump(part1Package, pDump)
