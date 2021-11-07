@@ -27,8 +27,9 @@ def main_vanilla():
     method = 'spectral_ratingGPS' # kmean, spectral_ratingGPS, spectral_pure, cluster_DBSCAN, cluster_FCM
     ratio = 1 # this parameter only is used when  the method =  'spectral_ratingGPS'
     #pickleJarName = "./PickleJar_Phoenix/" #"./PickleJar/"
-    pickleJarName = "./PickleJar/"
-
+    pickleJarName = "./PickleJar/" + "batchSize_" + str(batch_size) + "/"
+    if not os.path.exists(pickleJarName):
+        os.makedirs(pickleJarName)
     #methods = ['kmean', 'spectral_ratingGPS', 'spectral_pure', 'cluster_DBSCAN', 'cluster_FCM']
     #for i in range(1,34):
         #windowSize = i
@@ -40,7 +41,7 @@ def main_vanilla():
                        totalNOB, cluster_size, batch_size, num_of_centroids, 
                        factors, POIsims, method, windowSize, ratio, pickleJarName)
     return -result
-def optimize_vanilla(batch_size, cluster_size, factors, num_of_centroids, ratio):
+def optimize_vanilla(batch_size, cluster_size, factors, num_of_centroids):
     model = vanila.GBRS_vanilla
     fileName = "UC.csv"
     startYear = 2007
@@ -52,8 +53,8 @@ def optimize_vanilla(batch_size, cluster_size, factors, num_of_centroids, ratio)
     num_of_centroids = int(num_of_centroids)
     POIsims = 0
     windowSize = 1
-    method = 'spectral_ratingGPS' # kmean, spectral_ratingGPS, spectral_pure, cluster_DBSCAN, cluster_FCM
-    ratio = ratio # this parameter only is used when  the method =  'spectral_ratingGPS'
+    method = 'spectral_pure' # kmean, spectral_ratingGPS, spectral_pure, cluster_DBSCAN, cluster_FCM
+    ratio = 1 # this parameter only is used when  the method =  'spectral_ratingGPS'
     pickleJarName = "./PickleJar/" + "batchSize_" + str(batch_size) + "/"
     if not os.path.exists(pickleJarName):
         os.makedirs(pickleJarName)
@@ -141,7 +142,7 @@ def OPT_function():
                'cluster_size' : (1,20),
                'factors' : (1,40),
                'num_of_centroids':(1,20),
-               'ratio' : (0,1)}
+               }
                
     optimizer = BayesianOptimization(
         f = optimize_vanilla,
@@ -162,9 +163,10 @@ if __name__ == "__main__":
     #main_POIPP()
     #main_SVD()
     #main_SVD_POIsims()
+    
     OPT_function()
     
 
-
+ 
 #  GBRS, GBRS + review
 #  Minor Difference #user: tQBrhzi7ixctWgthHHSHgQ item: ZxQlHVm0pj0ERqpwhEHc6w  est = 3.7819958004220897  all the group ratings are [3.677328258019558, 3.668531629075991, 3.690211985717554, 4.322812821045875, 4.325878979435208, 4.308147836038116, 3.3966278691485887, 3.3871689274501158, 3.4117308888724485, 3.6402864359715954]
