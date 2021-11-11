@@ -8,6 +8,8 @@ import ActualPackage.models.SVD as SVD
 import ActualPackage.models.SVD_POIsims as SVD_POIsims
 import ActualPackage.functions.methods as functions
 from bayes_opt import BayesianOptimization
+from bayes_opt.logger import JSONLogger
+from bayes_opt.event import Events
 print("libraries loaded")
 def main_vanilla():
     model = vanila.GBRS_vanilla
@@ -16,12 +18,12 @@ def main_vanilla():
     startYear = 2007
     min_NO_rating = 9999999999   # total is 576065, filtering is too slow because of the matrix being too large.
     #batch_size = 900
-    batch_size = 378    
-    cluster_size = 6      #clusters per batch
+    batch_size = 1000    
+    cluster_size = 11      #clusters per batch
     #totalNOB = 1           #number of Batch, not including the test batch
-    totalNOB = 88
-    factors = 3
-    num_of_centroids = 9
+    totalNOB = 33
+    factors = 17
+    num_of_centroids = 14
     POIsims = 0
     windowSize = 1
     method = 'spectral_ratingGPS' # kmean, spectral_ratingGPS, spectral_pure, cluster_DBSCAN, cluster_FCM
@@ -52,7 +54,7 @@ def optimize_vanilla(cluster_size, factors, num_of_centroids):
     factors = int(factors)
     num_of_centroids = int(num_of_centroids)
     POIsims = 0
-    windowSize = 33
+    windowSize = 1
     method = 'spectral_ratingGPS' # kmean, spectral_ratingGPS, spectral_pure, cluster_DBSCAN, cluster_FCM
     ratio = 1 # this parameter only is used when  the method = 'spectral_ratingGPS' 
     pickleJarName = "./PickleJar/" + "batchSize_" + str(batch_size) + "/"
@@ -143,14 +145,15 @@ def OPT_function():
                'factors' : (1,40),
                'num_of_centroids':(1,20),
                }
-               
+            
     optimizer = BayesianOptimization(
         f = optimize_vanilla,
         pbounds=pbounds,
         verbose=2, # verbose = 1 prints only when a maximum is observed, verbose = 0 is silent
         random_state=1
         )
-
+    logger = JSONLogger(path="./logs.json")
+    optimizer.subscribe(Events.OPTIMIZATION_STEP, logger)
     optimizer.maximize(
         init_points=20,
         n_iter=180
@@ -158,13 +161,13 @@ def OPT_function():
 
 if __name__ == "__main__":
 
-    #main_vanilla()
+    main_vanilla()
     #main_POIsims()
     #main_POIPP()
     #main_SVD()
     #main_SVD_POIsims()
     
-    OPT_function()
+    #OPT_function()
     
 
  

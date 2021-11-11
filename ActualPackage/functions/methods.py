@@ -1,4 +1,5 @@
 import os
+import gc
 import sys
 import csv
 import math
@@ -17,7 +18,6 @@ from collections import defaultdict
 from sklearn.cluster import DBSCAN
 from sklearn.cluster import SpectralClustering
 from surprise.model_selection import train_test_split
-
 import warnings
 from sklearn.exceptions import DataConversionWarning
 # In[596]:
@@ -54,9 +54,12 @@ def baseImpute(df):
                 pdf.at[uid,iid] = pdf.mean(axis = 1)[uid]                                + pdf.mean(axis = 0)[iid]                                - global_mean
     return pdf.T.unstack().reset_index(name='rating')
 
-
+def zeroImpute(df):
+    
+    pdf = df.pivot(index='user_id', columns = 'bus_id', values = 'rating')
+    pdf = pdf.fillna(0)
+    return pdf.T.unstack().reset_index(name='rating')
 # In[599]:
-
 
 def columnImpute(df):
     pdf = df.pivot(index='user_id', columns = 'bus_id', values = 'rating')
@@ -158,8 +161,7 @@ def createTrainDf_unClustered(batchDic_unCluster, NOofBatches, windowSize):
 
     startFrom = max(NOofBatches - windowSize, 1)
     trainList = [batchDic_unCluster[i] for i in range(startFrom, NOofBatches+1)]
-    #for x in trainList:
-    #print(trainList[0])
+
     return pd.concat(trainList)
 
 
@@ -424,10 +426,12 @@ def cluster_ratingGPS_part3(curr_df, Xth_batch, clusters_per_batch, ratio, pickl
     else:
         simMat = cluster_ratingGPS_part2(curr_df, Xth_batch, clusters_per_batch, ratio, pickleJarName)    
 
-    simArray = np.array(simMat)
+    
     num_clusters = clusters_per_batch
-    sc = SpectralClustering(num_clusters, eigen_solver = 'amg', affinity='precomputed')
-    sc.fit(simArray)
+    sc = SpectralClustering(num_clusters, affinity='precomputed')
+    gc.collect()
+    #Xth_batch: 29, 22, 20
+    sc.fit(np.array(simMat))
     
     #================================================ Finished Clustering ==============================================
 
@@ -454,18 +458,21 @@ def createTestDf(df, batchDic_unCluster, batch_size, XthBatch):
         batchDic_unCluster[XthBatch] = creatingXthBatch_unClustered(df, batch_size, XthBatch)
     return batchDic_unCluster[XthBatch]
 
+
 # In[608]:
 
-def readDataFrame(df_train, df_test, df_trainOrignal): # to generate train/test objects for surprise
+def readDataFrame(df_train, df_test, df_trainOrignal,df_precisionRecall): # to generate train/test objects for surprise
     rawTrainSet = Dataset.load_from_df(df_train, Reader())
     rawTestSet  = Dataset.load_from_df(df_test, Reader())
+    rawTestSet_PR = Dataset.load_from_df(df_precisionRecall, Reader())
     rawTrainOriginal = Dataset.load_from_df(df_trainOrignal, Reader())
     
     trainSet = rawTrainSet.build_full_trainset()
     _, testSet = train_test_split(rawTestSet, test_size=1.0, random_state=1)
+    _, testSet_PR = train_test_split(rawTestSet_PR, test_size=1.0, random_state=1)
     _, originalTrainset = train_test_split(rawTrainOriginal, test_size=1.0, random_state=1)
     trainSetForNonPrivacy = rawTrainOriginal.build_full_trainset()
-    return trainSet, testSet, originalTrainset, trainSetForNonPrivacy
+    return trainSet, testSet, originalTrainset, trainSetForNonPrivacy, testSet_PR
 
 
 # In[611]:
@@ -530,9 +537,10 @@ def precision_recall_at_k(predictions, k=10, threshold=4):
 
     return precisions, recalls
 
-def test(trainedModel, testSet,log, mae = 1, rmse = 1):
+def test(trainedModel, testSet, df_precisionRecall, log, mae = 1, rmse = 1):
     print("Start testing ...")
     predictions = trainedModel.test(testSet)
+    predictions_precisionRecall = trainedModel.test(df_precisionRecall)
     if rmse == 1:
         with open(os.path.abspath(__file__+"/../../")+ "\\resultDumpster\\" + 'predictions.csv', 'w', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
@@ -544,7 +552,7 @@ def test(trainedModel, testSet,log, mae = 1, rmse = 1):
         #log.write(str(acc_mae) + '\n')
         log.write(str(acc_mae) + ',' )
     #predictions = algo.test(testset)
-    precisions, recalls = precision_recall_at_k(predictions, k=10, threshold=3)
+    precisions, recalls = precision_recall_at_k(predictions_precisionRecall, k=10, threshold=3)
     precision = sum(precisions.values()) / len(precisions)
     recall = sum(recalls.values()) / len(recalls)
     print(f"Precision: {precision}, Recall: {recall}" )
@@ -584,13 +592,18 @@ def furtherFilter(num_rating,df_train, df_trainOrignal, df_test):
     for user in df_test['user_id'].drop_duplicates():
         if len(df_trainOrignal.loc[df_trainOrignal["user_id"] == user]) <= num_rating:
             df_test = df_test.drop(df_test[df_test.user_id == user].index)
+            #df_precisionRecall = df_precisionRecall.drop(df_precisionRecall[df_precisionRecall.user_id == user].index)
         # cehck number of user ratings <>= you required
     
     #there is no need to calculate the similarities between users and centroids,
     #if the user is not in the test set.
     for user in df_trainOrignal['user_id'].drop_duplicates():
         if len(df_test.loc[df_test["user_id"] == user]) == 0:
-            df_trainOrignal = df_trainOrignal.drop(df_trainOrignal[df_trainOrignal.user_id == user].index) 
+            df_trainOrignal = df_trainOrignal.drop(df_trainOrignal[df_trainOrignal.user_id == user].index)
+    
+    #for user in df_trainOrignal['user_id'].drop_duplicates():
+        #if len(df_test.loc[df_test["user_id"] == user]) == 0:
+            #df_precisionRecall = df_precisionRecall.drop(df_precisionRecall[df_precisionRecall.user_id == user].index) 
      
     #Also, you need to keep the number of items the same in original data and in clustered data. 
     # so the number of ratings and the position of ratings can match.
@@ -604,6 +617,9 @@ def furtherFilter(num_rating,df_train, df_trainOrignal, df_test):
     for item in df_test['bus_id'].drop_duplicates():
         if len(df_trainOrignal.loc[df_trainOrignal["bus_id"] == item]) == 0:
             df_test = df_test.drop(df_test[df_test.bus_id == item].index)
+    #for item in df_test['bus_id'].drop_duplicates():
+        #if len(df_trainOrignal.loc[df_trainOrignal["bus_id"] == item]) == 0:
+            #df_precisionRecall = df_precisionRecall.drop(df_precisionRecall[df_precisionRecall.bus_id == item].index)   
         # check if item existed before   
     return df_train, df_trainOrignal, df_test
         
@@ -615,34 +631,36 @@ def prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster, batch_size, NOo
     print("Preparing training and testing datasets and objects ...")
     df_train = createTrainDf_clustered(df, batchDic_cluster, batchDic_unCluster, batch_size, NOofBatches, cluster_size, method, windowSize, ratio, pickleJarName)
     df_test  = createTestDf(df, batchDic_unCluster, batch_size, NOofBatches+1) 
-    df_trainOrignal = createTrainDf_unClustered(batchDic_unCluster, NOofBatches, windowSize) 
+    df_trainOrignal = createTrainDf_unClustered(batchDic_unCluster, NOofBatches, windowSize)
+    
     # the original rating matrix is not imputed at this point
     
     df_train = df_train[['user_id', 'bus_id', 'rating']]
     df_test  = df_test[['user_id', 'bus_id', 'rating']]
     df_trainOrignal = df_trainOrignal[['user_id', 'bus_id', 'rating']]
+    #df_precisionRecall = df_precisionRecall[['user_id', 'bus_id', 'rating']]
     #print(f"there are {len(df_train['bus_id'].drop_duplicates())} items in train" )
     #print(f"there are {len(df_test['bus_id'].drop_duplicates())} items in test" )
     #print(f"there are {len(df_trainOrignal['bus_id'].drop_duplicates())} items in original" )      
     if len(df_train.index) <=1 or len(df_test.index) <=1 or len(df_trainOrignal) <=1:
         raise Exception("One of the dataframe is too small, check the test df first.")
 
-    df_train, df_trainOrignal, df_test  = furtherFilter(1 ,df_train, df_trainOrignal, df_test)
+    df_train, df_trainOrignal, df_test = furtherFilter(2 ,df_train, df_trainOrignal, df_test)
     #df_trainOrignal = columnImpute(df_trainOrignal)
- 
-    trainSet, testSet, originalTrainSet, trainSetForNonPrivacy = readDataFrame(df_train,df_test,df_trainOrignal)
+    df_precisionRecall = zeroImpute(df_test)
+    trainSet, testSet, originalTrainSet, trainSetForNonPrivacy, testSet_PR = readDataFrame(df_train,df_test,df_trainOrignal, df_precisionRecall) #PR: precision recall
     OriginalDic = originalTrainListToDic(originalTrainSet)
     print("Done ...")
-    return trainSet, testSet, OriginalDic, trainSetForNonPrivacy
+    return trainSet, testSet, OriginalDic, trainSetForNonPrivacy, testSet_PR
     
     
 # In[616]:
 
-def batchRun(model, trainSet, originalDic, testSet, num_of_centroids,
+def batchRun(model, trainSet, originalDic, testSet, df_precisionRecall, num_of_centroids,
              factors, log, busSimMat, privacy, random = 6, MAE = 1, RMSE = 1 ):
                    
     trainedModel = train(model, trainSet, factors, random, originalDic, num_of_centroids, busSimMat = busSimMat, privacy = privacy)
-    acc_rmse, acc_mae, precision, recall = test(trainedModel, testSet, log, mae = MAE, rmse = RMSE)
+    acc_rmse, acc_mae, precision, recall = test(trainedModel, testSet, df_precisionRecall, log, mae = MAE, rmse = RMSE)
     return acc_rmse, acc_mae, precision, recall
 
 # In[616]:
@@ -690,10 +708,13 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
 
     for XthBatch in range(1, totalNOB+1):
         print(f"=================Starting the {XthBatch}th batch=================")
-        trainSet, testSet, originalDic, _ = prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster,batch_size, XthBatch, cluster_size, method, windowSize, ratio, pickleJarName)
-        acc_rmse, acc_mae, precision, recall = batchRun(model, trainSet, originalDic, testSet, num_of_centroids, factors, 
+        trainSet, testSet, originalDic, _, testSet_PR = prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster,batch_size, XthBatch, cluster_size, method, windowSize, ratio, pickleJarName)
+        acc_rmse, acc_mae, precision, recall = batchRun(model, trainSet, originalDic, testSet,testSet_PR, num_of_centroids, factors, 
                  log, busSimMat, privacy = 1, random = Random, MAE = mae, RMSE = rmse )
         resultDic[XthBatch] = [acc_rmse, acc_mae, precision, recall]
+    
+
+
     log.close
     mean = 0
     count  = 0
