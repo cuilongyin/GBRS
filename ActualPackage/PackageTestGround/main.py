@@ -161,7 +161,7 @@ def OPT_function():
 
 if __name__ == "__main__":
 
-    main_vanilla()
+    #main_vanilla()
     #main_POIsims()
     #main_POIPP()
     #main_SVD()

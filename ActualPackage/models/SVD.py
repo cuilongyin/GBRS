@@ -8,7 +8,7 @@ from collections import defaultdict
 
 class SVD(AlgoBase):
 
-    def __init__(self, n_factors=40, n_epochs=200, biased=False, init_mean=0,
+    def __init__(self, n_factors=40, n_epochs=200, biased=True, init_mean=0,
                  init_std_dev=.1, lr_all=.01,
                  reg_all=.5, lr_bu=None, lr_bi=None, 
                  lr_pu=None, lr_qi=None,

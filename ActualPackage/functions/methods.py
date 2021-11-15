@@ -500,7 +500,7 @@ def train(model, trainSet, factors, random , originalDic, num_of_centroids, busS
 
 # In[612]:
 
-def precision_recall_at_k(predictions, k=10, threshold=4):
+def precision_recall_at_k(predictions, k=10, threshold=0):
     """Return precision and recall at k metrics for each user"""
 
     # First map the predictions to each user.
@@ -552,7 +552,7 @@ def test(trainedModel, testSet, df_precisionRecall, log, mae = 1, rmse = 1):
         #log.write(str(acc_mae) + '\n')
         log.write(str(acc_mae) + ',' )
     #predictions = algo.test(testset)
-    precisions, recalls = precision_recall_at_k(predictions_precisionRecall, k=10, threshold=3)
+    precisions, recalls = precision_recall_at_k(predictions_precisionRecall, k=10, threshold=0.1)
     precision = sum(precisions.values()) / len(precisions)
     recall = sum(recalls.values()) / len(recalls)
     print(f"Precision: {precision}, Recall: {recall}" )
@@ -755,9 +755,11 @@ def originalRun(model, fileName, startYear, min_NO_rating, totalNOB,  batch_size
     resultDic = defaultdict()
     for XthBatch in range(1, totalNOB+1):
         print(f"=================Starting the {XthBatch}th batch=================")
-        _, testSet, _, originalTrainSet = prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster,batch_size, XthBatch, 0, None, windowSize, None, None)
-        acc_rmse, acc_mae, precision, recall = batchRun(model, originalTrainSet, None, testSet,  0, factors, log, busSimMat,
+        #trainSet, testSet, originalDic, _, testSet_PR = prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster,batch_size, XthBatch, cluster_size, method, windowSize, ratio, pickleJarName)
+        _, testSet, _, originalTrainSet, testSet_PR = prpareTrainTestObj(df, batchDic_cluster, batchDic_unCluster,batch_size, XthBatch, 0, None, windowSize, None, None)
+        acc_rmse, acc_mae, precision, recall = batchRun(model, originalTrainSet, None, testSet,testSet_PR,  0, factors, log, busSimMat,
                 privacy =0, random = Random, MAE = mae, RMSE = rmse )
+
         resultDic[XthBatch] = [acc_rmse, acc_mae, precision, recall]
     log.close
     mean = 0

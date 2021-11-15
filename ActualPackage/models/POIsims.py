@@ -241,7 +241,7 @@ class GBRS_POIsims(AlgoBase):
         return rankedPOIs
         
     def estimate(self, u, i):
-        print(f"user {u}, item {i}")
+        #print(f"user {u}, item {i}")
         self.num_predicted += 1
         
         u = u.split('UKN__')[1] #surprise will ad UKN__ infront of every user index since 
