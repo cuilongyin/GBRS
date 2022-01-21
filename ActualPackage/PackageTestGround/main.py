@@ -37,7 +37,6 @@ def main_vanilla():
         #windowSize = i
     #for i in range(11):
         #ratio = i * 0.1
-        
  
     result = functions.totalRun(model, fileName, startYear, min_NO_rating,
                        totalNOB, cluster_size, batch_size, num_of_centroids, 
@@ -67,7 +66,6 @@ def optimize_vanilla(cluster_size, factors, num_of_centroids):
                        factors, POIsims, method, windowSize, ratio, pickleJarName)
     return -result
 #0-5: 1.3619   5-10: 1.3775  10-15: 1.3568 15-20: 1.3541  20-25: RMSE: 1.3812
-
 def main_POIsims():
     
     model = POI.GBRS_POIsims
@@ -88,15 +86,14 @@ def main_POIsims():
     functions.totalRun(model, fileName, startYear, min_NO_rating, 
                        totalNOB, cluster_size, batch_size, num_of_centroids, 
                        factors, POIsims, method, windowSize, ratio, pickleJarName)
-    
 def main_SVD():
     model = SVD
-    fileName = "UC.csv"
-    #fileName = "Phoenix.csv"
+    #fileName = "UC.csv"
+    fileName = "Phoenix.csv"
     startYear = 2007
     min_NO_rating = 9999999999   # total is 576065, filtering is too slow because of the matrix being too large.
-    batch_size = 900
-    totalNOB = 33           #number of Batch, not including the test batch
+    batch_size = 3000
+    totalNOB = 191         #number of Batch, not including the test batch
     factors = 1
     windowSize = 1
     POIsims = 0
@@ -149,22 +146,24 @@ def OPT_function():
     optimizer = BayesianOptimization(
         f = optimize_vanilla,
         pbounds=pbounds,
-        verbose=2, # verbose = 1 prints only when a maximum is observed, verbose = 0 is silent
+        verbose=1, # verbose = 1 prints only when a maximum is observed, verbose = 0 is silent
         random_state=1
         )
-    logger = JSONLogger(path="./logs.json")
-    optimizer.subscribe(Events.OPTIMIZATION_STEP, logger)
+    #logger = JSONLogger(path="./logs.json")
+    #optimizer.subscribe(Events.OPTIMIZATION_STEP, logger)
     optimizer.maximize(
         init_points=20,
         n_iter=180
         )  
 
 if __name__ == "__main__":
-
+    #include <omp.h>
+    #omp_set_num_threads(number_of_threads)
+    #setenv OMP_NUM_THREADS 4,3,2
     #main_vanilla()
     #main_POIsims()
     #main_POIPP()
-    #main_SVD()
+    main_SVD()
     #main_SVD_POIsims()
     
     #OPT_function()

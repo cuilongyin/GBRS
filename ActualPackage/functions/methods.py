@@ -676,7 +676,7 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
              Random = 6, mae = True, rmse = True):
     # if you need to see results, set mae or rmse to True
     # Randome is Random state 
-    # blockPrint()
+    blockPrint()
     if platform.system() == 'Windows':
         filePrefix  = os.path.dirname(os.path.realpath(__file__)) + "\\..\\resultDumpster\\" 
     else:
@@ -719,7 +719,7 @@ def totalRun(model, fileName, startYear, min_NO_rating, totalNOB, cluster_size,
     mean = 0
     count  = 0
     for key, value in resultDic.items():
-        mean += value[0]
+        mean += value[2]
         count += 1
     print(f"Mean RMSE: {mean/count}")
     enablePrint()

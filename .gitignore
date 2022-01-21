@@ -20,3 +20,9 @@ test/CourseMF (1).py
 *.rating
 *.itemlist
 *.userlist
+*.rating_index1
+*.rating_cityUser
+*.cityUser
+*.png
+*.zip
+PickleJar_Phoenix/*
