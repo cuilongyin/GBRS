@@ -16,3 +16,7 @@ test/CourseMF (1).py
 *.iml
 *.xml
 *.idea
+*.rating_index1_cityUser
+*.rating
+*.itemlist
+*.userlist
